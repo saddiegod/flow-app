@@ -8,7 +8,7 @@ import {
 import { sfx, load, save, scheduleNotif, fireNotif, requestNotifPerm } from "./utils/helpers.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-import { FONT, SERIF, BOARD_COLORS, BOARD_EMOJIS } from "./constants.js";
+import { FONT, SERIF, BOARD_COLORS, BOARD_EMOJIS } from "./utils/constants.js";
 
 // ── Components ────────────────────────────────────────────────────────────────
 import { injectGlobal, StatsBar, Ring } from "./components/shared.jsx";
