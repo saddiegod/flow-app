@@ -1,3 +1,22 @@
+import { supabase } from './supabase';
+
+export async function subscribeToPush() {
+  const registration = await navigator.serviceWorker.ready;
+  
+  // 1. Pedir el ticket a los servidores de Apple/Google
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+  });
+
+  // 2. Guardar ese ticket en tu base de datos de Supabase
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .insert([{ subscription: subscription.toJSON() }]);
+
+  if (error) console.error('Error guardando suscripción:', error);
+  else console.log('✅ iPhone suscrito a notificaciones reales');
+}
 // ─── Audio ────────────────────────────────────────────────────────────────────
 let _ac = null;
 export function sfx(type) {
