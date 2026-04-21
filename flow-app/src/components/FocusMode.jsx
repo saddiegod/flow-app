@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FONT, SERIF, POMODORO_PRESETS } from "../constants.js";
+import { FONT, SERIF, POMODORO_PRESETS } from "../utils/constants.js";
 import { sfx, fireNotif } from "../utils/helpers.js";
 import { Ring } from "./shared.jsx";
 

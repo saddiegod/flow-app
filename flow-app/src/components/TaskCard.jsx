@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { CATS, FONT, SERIF } from "../constants.js";
+import { CATS, FONT, SERIF } from "../utils/constants.js";
 import { durLabel, catOf } from "../utils/dates.js";
 import { sfx } from "../utils/helpers.js";
 import { Confetti } from "./shared.jsx";

@@ -1,4 +1,4 @@
-import { BADGES, FONT, SERIF } from "../constants.js";
+import { BADGES, FONT, SERIF } from "../utils/constants.js";
 import { daysClean, streakColor } from "../utils/dates.js";
 import { sfx } from "../utils/helpers.js";
 import { Flame, BadgePill } from "./shared.jsx";

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { CATS, DAYS_SH, ALL_TIMES, QUICK_TASKS, FONT, SERIF } from "../constants.js";
+import { CATS, DAYS_SH, ALL_TIMES, QUICK_TASKS, FONT, SERIF } from "../utils/constants.js";
 import { sfx } from "../utils/helpers.js";
 import { IS } from "./shared.jsx";
 

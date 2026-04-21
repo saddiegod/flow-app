@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { BOARD_COLORS, BOARD_EMOJIS, FONT, SERIF } from "../constants.js";
+import { BOARD_COLORS, BOARD_EMOJIS, FONT, SERIF } from "../utils/constants.js";
 import { uid } from "../utils/dates.js";
 import { sfx } from "../utils/helpers.js";
 import { Ring, IS } from "./shared.jsx";

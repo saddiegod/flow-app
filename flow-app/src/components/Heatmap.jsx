@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { SERIF, FONT } from "../constants.js";
+import { SERIF, FONT } from "../utils/constants.js";
 import { toISO, fromISO, recurApplies } from "../utils/dates.js";
 
 const DAYS_SH = ["D","L","M","X","J","V","S"];

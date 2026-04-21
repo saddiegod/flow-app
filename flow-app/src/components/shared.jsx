@@ -1,4 +1,4 @@
-import { FONT, SERIF } from "../constants.js";
+import { FONT, SERIF } from "../utils/constants.js";
 
 // ─── Global styles injected once ───────────────────────────────────────────────
 export function injectGlobal() {

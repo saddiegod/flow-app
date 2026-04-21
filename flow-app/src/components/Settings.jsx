@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FONT, SERIF } from "../constants.js";
+import { FONT, SERIF } from "../utils/constants.js";
 import { exportBackup, importBackup, requestNotifPerm, fireNotif, load, save } from "../utils/helpers.js";
 import { migrateTasks } from "../utils/dates.js";
 import { IS } from "./shared.jsx";

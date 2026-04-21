@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { HOURS, SERIF } from "../constants.js";
+import { HOURS, SERIF } from "../utils/constants.js";
 import { todayISO } from "../utils/dates.js";
 import { sfx } from "../utils/helpers.js";
 import TaskCard from "./TaskCard.jsx";
