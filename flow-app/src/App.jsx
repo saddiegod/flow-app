@@ -595,6 +595,8 @@ export default function App() {
   useEffect(()=>{ injectGlobal(); },[]);
 
   const [tab,      setTab]      = useState("today");
+  const [search, setSearch] = useState("");
+  const [filterCat, setFilterCat] = useState("");
   const [date,     setDate]     = useState(todayStr);
   const [showCfg,  setShowCfg]  = useState(false);
   const [session,  setSession]  = useState(null);
@@ -615,6 +617,19 @@ export default function App() {
 
   // Merge one-time + recurring tasks para la fecha seleccionada
   const allTasksForDate = useMemo(()=>{
+  const filteredTasks = useMemo(() => {
+  return allTasksForDate
+    .filter(t =>
+      (!filterCat || t.category === filterCat) &&
+      (!search || t.title.toLowerCase().includes(search.toLowerCase()))
+    )
+    .sort((a,b)=>{
+      if(a.status !== b.status){
+        return a.status === "pending" ? -1 : 1;
+      }
+      return 0;
+    });
+}, [allTasksForDate, search, filterCat]);
     const reg = tasks.filter(t=>t.date===date).map(t=>({...t,type:"once"}));
     const rec = recurring
       .filter(rt=>rt.active&&recurApplies(rt.recurrence,date))
@@ -661,6 +676,11 @@ export default function App() {
 
   // Eliminar tarea
   const deleteTask = (id,type) => {
+  if(!confirm("¿Eliminar esta tarea?")) return;
+
+  if(type==="recurring") setRecurring(p=>p.filter(rt=>rt.id!==id));
+  else setTasks(p=>p.filter(t=>t.id!==id));
+};
     if(type==="recurring") setRecurring(p=>p.filter(rt=>rt.id!==id));
     else setTasks(p=>p.filter(t=>t.id!==id));
   };
@@ -758,6 +778,21 @@ export default function App() {
             </div>
 
             <StatsBar all={allTasksForDate}/>
+            <div style={{marginBottom:14}}>
+  <input
+    placeholder="Buscar tarea..."
+    value={search}
+    onChange={e=>setSearch(e.target.value)}
+    style={{
+      width:"100%",
+      padding:"10px 14px",
+      borderRadius:12,
+      border:"1px solid rgba(255,255,255,.08)",
+      background:"rgba(255,255,255,.05)",
+      color:"#fff"
+    }}
+  />
+</div>
 
             {allTasksForDate.length===0?(
               <div style={{textAlign:"center",padding:"64px 20px"}}>
@@ -766,7 +801,7 @@ export default function App() {
                 <div style={{fontSize:13,color:"rgba(255,255,255,.22)",marginTop:8}}>Añade tareas o disfruta el descanso</div>
               </div>
             ):(
-              <Timeline allTasks={allTasksForDate} date={date} onToggle={toggleTask} onDelete={deleteTask}/>
+              <Timeline allTasks={filteredTasks} date={date} onToggle={toggleTask} onDelete={deleteTask}/>
             )}
           </div>
         )}
