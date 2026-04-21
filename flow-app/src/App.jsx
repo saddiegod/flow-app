@@ -1,7 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "./supabase";
 
-// ─── SONIDOS NATIVOS (Web Audio API) ────────────────────────────────────────
+// ─── ESTILOS GLOBALES Y ANIMACIONES (Inyectados dinámicamente) ──────────────
+const injectStyles = () => {
+  if (document.getElementById("app-styles")) return;
+  const style = document.createElement("style");
+  style.id = "app-styles";
+  style.innerHTML = `
+    @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes popIn { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .task-item { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .task-done { opacity: 0.5; transform: scale(0.98); }
+    ::-webkit-scrollbar { width: 0px; background: transparent; }
+  `;
+  document.head.appendChild(style);
+};
+
+// ─── SONIDOS NATIVOS ────────────────────────────────────────────────────────
 let audioCtx = null;
 const playSound = (type) => {
   try {
@@ -10,39 +27,26 @@ const playSound = (type) => {
     
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    osc.connect(gain); gain.connect(audioCtx.destination);
     
     const now = audioCtx.currentTime;
     if (type === 'click') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-      osc.start(now);
-      osc.stop(now + 0.05);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
+      gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now); osc.stop(now + 0.05);
     } else if (type === 'success') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.setValueAtTime(600, now + 0.1);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.2);
-      osc.start(now);
-      osc.stop(now + 0.2);
-    } else if (type === 'error') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(150, now);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.start(now);
-      osc.stop(now + 0.2);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.setValueAtTime(600, now + 0.1);
+      gain.gain.setValueAtTime(0.05, now); gain.gain.linearRampToValueAtTime(0, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+    } else if (type === 'notify') {
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(500, now); osc.frequency.setValueAtTime(800, now + 0.2);
+      gain.gain.setValueAtTime(0.1, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      osc.start(now); osc.stop(now + 0.4);
     }
   } catch(e) {}
 };
 
-// ─── CONSTANTES DE PRODUCTIVIDAD ────────────────────────────────────────────
-
+// ─── CONSTANTES ─────────────────────────────────────────────────────────────
 const CATEGORIES = [
   { id: "work", label: "Trabajo", icon: "💻" },
   { id: "personal", label: "Personal", icon: "👤" },
@@ -57,149 +61,94 @@ const HABITS_LIST = [
   { id: "ejercicio", label: "Ejercicio", icon: "🏃" }
 ];
 
+const QUICK_TIMES = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
+
 const ACCENT_PRESETS = [
-  { name: "Blue iOS", v: "#007AFF" },
-  { name: "Green iOS", v: "#34C759" },
-  { name: "Orange iOS", v: "#FF9500" },
-  { name: "Purple iOS", v: "#AF52DE" },
-  { name: "Pink iOS", v: "#FF2D55" },
-  { name: "Teal iOS", v: "#5AC8FA" },
+  { name: "Blue iOS", v: "#007AFF" }, { name: "Green iOS", v: "#34C759" },
+  { name: "Orange iOS", v: "#FF9500" }, { name: "Purple iOS", v: "#AF52DE" },
+  { name: "Pink iOS", v: "#FF2D55" }, { name: "Teal iOS", v: "#5AC8FA" },
 ];
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
-
-const isValid = (hex) => /^#[0-9A-Fa-f]{6}$/.test(hex);
-
 const fmtElapsed = (ms) => {
-  const totalSecs = Math.floor(ms / 1000);
-  const h = Math.floor(totalSecs / 3600);
-  const m = Math.floor((totalSecs % 3600) / 60);
-  const s = totalSecs % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  const totalSecs = Math.floor(ms / 1000); const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60); const s = totalSecs % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
 
 const getTodayStr = () => new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 const getMonthStr = () => new Date().toLocaleDateString("es-MX", { month: "short" });
 
-// ─── COLOR SYSTEM (ESTÉTICA IOS CLEAN) ───────────────────────────────────────
-
 const makeC = (accent = "#007AFF") => ({
-  bg: "#F2F2F7",          // Fondo general del sistema iOS
-  surface: "#FFFFFF",     // Color de las tarjetas
-  card: "#FFFFFF",        
-  border: "#E5E5EA",      // Bordes grises muy suaves
-  green: "#34C759", greenD: "#E5F9EA", 
-  red: "#FF3B30", redD: "#FFECEB",
-  accent, accentDim: accent + "1A", accentMid: accent + "33",
-  gold: "#FF9500", 
-  text: "#1C1C1E",        // Texto principal (Casi negro)
-  textDim: "#8E8E93",     // Texto secundario
-  muted: "#AEAEB2",       // Detalles inactivos
+  bg: "#F2F2F7", surface: "#FFFFFF", card: "#FFFFFF", border: "#E5E5EA",
+  green: "#34C759", greenD: "#E5F9EA", red: "#FF3B30", redD: "#FFECEB",
+  accent, accentDim: accent + "1A", gold: "#FF9500", 
+  text: "#1C1C1E", textDim: "#8E8E93", muted: "#AEAEB2",
 });
 
-// Tipografía nativa de Apple para una sensación perfecta en iPhone
-const fontClean   = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const fontClean = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 const INPUT_STYLE_BASE = {
-  width: "100%", padding: "16px", borderRadius: 14,
-  fontSize: 16, fontFamily: fontClean, boxSizing: "border-box", outline: "none",
-  background: "#F2F2F7", border: "none", color: "#1C1C1E", transition: "all 0.2s"
+  width: "100%", padding: "16px", borderRadius: 14, fontSize: 16, fontFamily: fontClean, 
+  boxSizing: "border-box", outline: "none", background: "#F2F2F7", border: "none", color: "#1C1C1E", transition: "all 0.2s"
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENTES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const StarRating = ({ value, onChange, C }) => (
-  <div style={{ display: "flex", gap: 8 }}>
-    {[1, 2, 3].map((n) => (
-      <button key={n} type="button" onClick={(e) => { e.preventDefault(); playSound('click'); onChange(n === value ? 0 : n); }}
-        style={{ background: n <= value ? C.gold + "22" : C.bg, border: "none", cursor: "pointer", fontSize: 22, color: n <= value ? C.gold : C.muted, padding: "10px", borderRadius: "50%", lineHeight: 1, transition: "all 0.2s" }}>
-        🔥
-      </button>
-    ))}
-  </div>
-);
-
-const HeatmapCalendar = ({ tasks, monthStr, C }) => {
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const firstDay   = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-  const today      = now.getDate();
-
-  const completedByDay = useMemo(() => {
-    const map = {};
-    tasks.filter(t => t.status === "done").forEach((t) => {
-      if (!t.date.toLowerCase().includes(monthStr.toLowerCase())) return;
-      const day = parseInt(t.date, 10);
-      if (!isNaN(day)) map[day] = (map[day] || 0) + 1;
-    });
-    return map;
-  }, [tasks, monthStr]);
-
-  const maxTasks = Math.max(...Object.values(completedByDay), 1);
-
-  const getColor = (day) => {
-    const p = completedByDay[day];
-    if (!p) return C.bg; 
-    const intensity = Math.min(p / maxTasks, 1);
-    const alpha = Math.round(intensity * 155 + 100).toString(16).padStart(2, "0");
-    return `${C.accent}${alpha}`;
-  };
-
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-        {["D","L","M","M","J","V","S"].map((d, i) => (
-          <div key={i} style={{ fontSize: 12, color: C.textDim, textAlign: "center", paddingBottom: 8, fontWeight: "600" }}>{d}</div>
-        ))}
-        {cells.map((day, i) => (
-          <div key={i} style={{
-            aspectRatio: "1", borderRadius: 8, background: day ? getColor(day) : "transparent", 
-            border: day === today && !completedByDay[day] ? `1px solid ${C.accent}` : "none",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, 
-            color: day ? (completedByDay[day] ? "#fff" : C.text) : "transparent",
-            fontWeight: day === today ? "bold" : "500", fontFamily: fontClean
-          }}>{day || ""}</div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN APP
+// APP PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export default function App() {
-  const [session,      setSession]      = useState(null);
-  const [authEmail,    setAuthEmail]    = useState("");
+  const [session, setSession] = useState(null);
+  const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-  const [isLogin,      setIsLogin]      = useState(true);
-  const [authLoading,  setAuthLoading]  = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const [tab,          setTab]          = useState("dash");
-  const [tasks,        setTasks]        = useState([]);
-  const [habits,       setHabits]       = useState({ meditar: false, agua: false, leer: false, ejercicio: false });
-  const [form,         setForm]         = useState({ title: "", category: "work", note: "", priority: 1, time: "" });
-  const [loaded,       setLoaded]       = useState(false);
-  const [flash,        setFlash]        = useState(null);
+  const [tab, setTab] = useState("dash");
+  const [tasks, setTasks] = useState([]);
+  const [habits, setHabits] = useState({ meditar: false, agua: false, leer: false, ejercicio: false });
+  const [form, setForm] = useState({ title: "", category: "work", note: "", priority: 1, time: "" });
+  const [loaded, setLoaded] = useState(false);
 
-  const [timerActive,  setTimerActive]  = useState(false);
-  const [timerStart,   setTimerStart]   = useState(null);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerStart, setTimerStart] = useState(null);
   const [timerElapsed, setTimerElapsed] = useState(0);
   const [currentFocus, setCurrentFocus] = useState("");
-  const [journal,      setJournal]      = useState("");
-  const [journalSaved, setJournalSaved] = useState(false);
-  const [accent,       setAccent]       = useState("#007AFF");
-  const [dailyGoal,    setDailyGoal]    = useState(5);
+  
+  const [accent, setAccent] = useState("#007AFF");
+  const [dailyGoal, setDailyGoal] = useState(5);
+  const notifiedTasks = useRef(new Set()); // Para no repetir notificaciones
 
   const C = useMemo(() => makeC(accent), [accent]);
+
+  useEffect(() => { injectStyles(); }, []);
+
+  // ── Permisos de Notificación
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // ── Lógica de Notificaciones de Horario
+  useEffect(() => {
+    const checkAlarms = setInterval(() => {
+      if (!tasks.length) return;
+      const now = new Date();
+      const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const todayStr = getTodayStr();
+
+      tasks.forEach(t => {
+        if (t.date === todayStr && t.time_target === currentHM && t.status === "pending" && !notifiedTasks.current.has(t.id)) {
+          playSound('notify');
+          if (Notification.permission === "granted") {
+            new Notification("¡Hora de empezar!", { body: t.title, icon: "/favicon.ico" });
+          }
+          notifiedTasks.current.add(t.id);
+        }
+      });
+    }, 30000); // Revisa cada 30 segundos
+    return () => clearInterval(checkAlarms);
+  }, [tasks]);
 
   // ── Timer Logic
   useEffect(() => {
@@ -209,35 +158,26 @@ export default function App() {
   }, [timerActive, timerStart]);
 
   const toggleTimer = useCallback((e) => {
-    if(e) e.preventDefault();
-    playSound('click');
+    if(e) e.preventDefault(); playSound('click');
     if (timerActive) setTimerActive(false);
     else if (timerElapsed > 0) { setTimerStart(Date.now() - timerElapsed); setTimerActive(true); }
     else { setTimerStart(Date.now()); setTimerActive(true); }
   }, [timerActive, timerElapsed]);
 
-  const resetTimer = useCallback((e) => {
-    if(e) e.preventDefault();
-    playSound('click');
-    setTimerActive(false); setTimerElapsed(0); setTimerStart(null); setCurrentFocus("");
-  }, []);
-
-  // ── Auth & Load Logic
+  // ── Auth & Load
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleAuth = useCallback(async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault(); setAuthLoading(true);
     try {
       if (isLogin) { const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword }); if (error) throw error; }
       else { const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword }); if (error) throw error; alert("Cuenta creada."); }
     } catch (err) { alert(err.message); } finally { setAuthLoading(false); }
-  }, [isLogin, authEmail, authPassword]);
-
-  const handleLogout = useCallback(async (e) => { if(e) e.preventDefault(); await supabase.auth.signOut(); setTasks([]); setLoaded(false); }, []);
+  };
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -255,14 +195,10 @@ export default function App() {
       const { data: hData } = await supabase.from("daily_habits").select("*").eq("user_id", session.user.id);
 
       if (tData) setTasks(tData);
-
       if (hData) {
-        const lH = { meditar: false, agua: false, leer: false, ejercicio: false }; let lJ = "";
-        hData.forEach((item) => {
-          if (item.id === "journal") lJ = item.note || "";
-          else if (lH[item.id] !== undefined) lH[item.id] = item.status;
-        });
-        setHabits(lH); setJournal(lJ);
+        const lH = { meditar: false, agua: false, leer: false, ejercicio: false };
+        hData.forEach((item) => { if (lH[item.id] !== undefined) lH[item.id] = item.status; });
+        setHabits(lH);
       }
     } catch (err) { console.error(err); }
     setLoaded(true);
@@ -270,111 +206,75 @@ export default function App() {
 
   useEffect(() => { load(); }, [load]);
 
-  const saveConfig = useCallback(async (e) => {
-    if(e) e.preventDefault();
-    await supabase.auth.updateUser({ data: { accent, daily_goal: dailyGoal } });
-    load(); playSound("success"); alert("Configuración guardada");
-  }, [accent, dailyGoal, load]);
-
-  const addTask = useCallback(async (e) => {
+  const addTask = async (e) => {
     if(e) e.preventDefault();
     if (!form.title.trim()) { playSound('error'); return; }
     
+    // Forzamos un ID numérico seguro para bigint
+    const newId = Date.now();
     const payload = {
-      id: Date.now(), 
+      id: newId, 
       user_id: session.user.id, title: form.title, category: form.category, note: form.note,
-      date: getTodayStr(), time_target: form.time, priority: form.priority, status: "pending"
+      date: getTodayStr(), time_target: form.time || null, priority: form.priority, status: "pending"
     };
     
-    const { data, error } = await supabase.from("tasks").insert([payload]).select();
-    if (error) { playSound('error'); alert(`Error: ${error.message}`); return; }
+    // Actualización optimista (Se muestra en pantalla al instante)
+    setTasks((prev) => [payload, ...prev]);
+    playSound('success');
+    setTab("agenda");
+    setForm({ title: "", category: "work", note: "", priority: 1, time: "" });
 
-    if (data && data.length > 0) {
-      playSound('success');
-      setTasks((prev) => [data[0], ...prev]);
-      setForm({ title: "", category: "work", note: "", priority: 1, time: "" });
-      setFlash("win"); setTimeout(() => setFlash(null), 900); setTab("agenda");
+    // Guardado en BD silencioso
+    const { error } = await supabase.from("tasks").insert([payload]);
+    if (error) {
+      alert(`Error al guardar en la nube: ${error.message}. Revisa las reglas RLS de Supabase.`);
+      setTasks((prev) => prev.filter(t => t.id !== newId)); // Revertir si falla
     }
-  }, [form, session]);
+  };
 
-  const toggleTaskStatus = useCallback(async (task) => {
+  const toggleTaskStatus = async (task) => {
     playSound('click');
     const newStatus = task.status === "done" ? "pending" : "done";
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
-  }, []);
+  };
 
-  const deleteTask = useCallback(async (id) => {
-    if (!window.confirm("¿Eliminar tarea?")) return;
+  const deleteTask = async (id) => {
+    if (!window.confirm("¿Eliminar tarea permanentemente?")) return;
     playSound('error');
     setTasks(prev => prev.filter(t => t.id !== id));
     await supabase.from("tasks").delete().eq("id", id);
-  }, []);
+  };
 
-  const toggleHabit = useCallback(async (e, k) => {
-    e.preventDefault(); e.stopPropagation(); playSound('click');
+  const toggleHabit = async (k) => {
+    playSound('click');
     const nextStatus = !habits[k];
     setHabits((prev) => ({ ...prev, [k]: nextStatus }));
-    supabase.from("daily_habits").upsert({ id: k, user_id: session.user.id, status: nextStatus }).catch(console.error);
-  }, [habits, session]);
+    await supabase.from("daily_habits").upsert({ id: k, user_id: session.user.id, status: nextStatus });
+  };
 
-  const saveJournal = useCallback(async (e) => {
-    if(e) e.preventDefault();
-    playSound('success');
-    await supabase.from("daily_habits").upsert({ id: "journal", user_id: session.user.id, status: false, note: journal });
-    setJournalSaved(true); setTimeout(() => setJournalSaved(false), 2000);
-  }, [session, journal]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ESTADO DERIVADO
-  // ═══════════════════════════════════════════════════════════════════════════
-
+  // ── ESTADO DERIVADO
   const todayStr = getTodayStr();
-  const monthStr = getMonthStr();
-  
   const todaysTasks = useMemo(() => tasks.filter(t => t.date === todayStr), [tasks, todayStr]);
   const completedToday = useMemo(() => todaysTasks.filter(t => t.status === "done").length, [todaysTasks]);
   const progressPct = useMemo(() => Math.min((completedToday / dailyGoal) * 100, 100), [completedToday, dailyGoal]);
 
   const pendingTasks = useMemo(() => tasks.filter(t => t.status === "pending").sort((a,b) => b.priority - a.priority), [tasks]);
-  const doneTasks = useMemo(() => tasks.filter(t => t.status === "done").slice(0, 20), [tasks]);
+  
+  // Tareas del día ordenadas cronológicamente para el Itinerario
+  const timetableTasks = useMemo(() => {
+    return todaysTasks.filter(t => t.time_target).sort((a, b) => a.time_target.localeCompare(b.time_target));
+  }, [todaysTasks]);
 
-  // ─── STYLE HELPERS ─────────────────────────────────────────────────────────
-
-  const getPillStyle = (on, color) => ({
-    padding: "12px 20px", borderRadius: 20, border: "none",
-    background: on ? color : C.bg, color: on ? "#ffffff" : C.textDim,
-    fontSize: 14, cursor: "pointer", fontFamily: fontClean, fontWeight: "600",
-    transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)", transform: on ? "scale(1.02)" : "scale(1)", 
-    boxShadow: on ? `0 4px 12px ${color}40` : "none", display: "flex", alignItems: "center", gap: 8, outline: "none"
-  });
-
-  const getCategoryBtnStyle = (v) => ({
-    flex: 1, padding: "14px 8px", borderRadius: 14, border: "none",
-    cursor: "pointer", background: form.category === v ? C.accentDim : C.bg, 
-    color: form.category === v ? C.accent : C.textDim,
-    fontFamily: fontClean, fontSize: 13, fontWeight: "600", transition: "all 0.2s",
-  });
-
-  const cardStyle = {
-    background: C.card, borderRadius: 20, padding: 24, marginBottom: 20, 
-    boxShadow: "0 4px 24px rgba(0,0,0,0.04)" // Sombra ultra suave tipo Apple
-  };
-
-  const sectionLabelStyle = {
-    fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 16, fontFamily: fontClean
-  };
-
-  // ─── LOGIN SCREEN ────────────────────────────────────────────────────────
-
+  // ── LOGIN SCREEN ──
   if (!session) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: fontClean }}>
-        <div style={{ background: C.surface, borderRadius: 24, padding: 40, width: "100%", maxWidth: 380, boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}>
+        <div className="animate-pop" style={{ background: C.surface, borderRadius: 24, padding: 40, width: "100%", maxWidth: 380, boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🌊</div>
+            <div style={{ fontSize: 44, marginBottom: 12 }}>🌊</div>
             <div style={{ fontSize: 28, fontWeight: "800", color: C.text, letterSpacing: "-0.5px" }}>Flow & Focus</div>
-            <div style={{ fontSize: 14, color: C.textDim, marginTop: 8, fontWeight: "500" }}>Tu sistema de productividad</div>
+            <div style={{ fontSize: 14, color: C.textDim, marginTop: 8, fontWeight: "500" }}>Sistema iOS de Productividad</div>
           </div>
           <form onSubmit={handleAuth}>
             <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required style={{ ...INPUT_STYLE_BASE, marginBottom: 16 }} />
@@ -393,215 +293,161 @@ export default function App() {
     );
   }
 
-  if (!loaded) return <div style={{ background: C.bg, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.textDim, fontFamily: fontClean, fontWeight: "600", fontSize: 15 }}>Cargando datos...</div>;
+  if (!loaded) return <div style={{ background: C.bg, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.textDim, fontFamily: fontClean, fontWeight: "600" }}>Cargando datos...</div>;
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // RENDER PRINCIPAL
-  // ═══════════════════════════════════════════════════════════════════════════════
+  const cardStyle = { background: C.card, borderRadius: 20, padding: 24, marginBottom: 20, boxShadow: "0 4px 24px rgba(0,0,0,0.03)" };
+  const sectionLabelStyle = { fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 16, fontFamily: fontClean };
 
   return (
     <div style={{ fontFamily: fontClean, background: C.bg, minHeight: "100vh", color: C.text, paddingBottom: 100 }}>
-      {flash && <div style={{ position: "fixed", inset: 0, background: "rgba(52,199,89,0.1)", pointerEvents: "none", zIndex: 999, transition: "background 0.5s" }} />}
-
-      {/* ── HEADER IOS STYLE ─────────────────────────────────────────────── */}
-      <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}88` }}>
+      {/* ── HEADER ── */}
+      <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}88` }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{todayStr}</div>
           <div style={{ fontSize: 28, fontWeight: "800", color: C.text, letterSpacing: "-0.5px" }}>Focus <span style={{ color: C.accent }}>🌊</span></div>
         </div>
         <div style={{ textAlign: "right" }}>
-          {timerActive && (
-            <div style={{ fontSize: 16, color: C.accent, fontWeight: "700", fontFamily: "monospace", padding: "6px 12px", background: C.accentDim, borderRadius: 12 }}>
-              {fmtElapsed(timerElapsed)}
-            </div>
-          )}
+          {timerActive && <div className="animate-pop" style={{ fontSize: 16, color: C.accent, fontWeight: "700", fontFamily: "monospace", padding: "6px 12px", background: C.accentDim, borderRadius: 12 }}>⏱ {fmtElapsed(timerElapsed)}</div>}
         </div>
       </div>
 
       <div style={{ padding: "20px 20px", maxWidth: 540, margin: "0 auto" }}>
 
         {/* ══════════════════════════════════════════════════════════════
-            DASHBOARD
+            INICIO (DASHBOARD)
         ══════════════════════════════════════════════════════════════ */}
-        {tab === "dash" && <>
-
-          {/* Meta del Día */}
+        {tab === "dash" && <div className="animate-slide-up">
           <div style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={sectionLabelStyle}>Progreso Diario</div>
-              <div style={{ fontSize: 15, color: completedToday >= dailyGoal ? C.green : C.textDim, fontWeight: "700" }}>
-                {completedToday} de {dailyGoal}
-              </div>
+              <div style={{ fontSize: 15, color: completedToday >= dailyGoal ? C.green : C.textDim, fontWeight: "700" }}>{completedToday} de {dailyGoal}</div>
             </div>
             <div style={{ height: 10, background: C.bg, borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 10, transition: "width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)", width: `${progressPct}%`, background: progressPct >= 100 ? C.green : C.accent }} />
+              <div style={{ height: "100%", borderRadius: 10, transition: "width 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)", width: `${progressPct}%`, background: progressPct >= 100 ? C.green : C.accent }} />
             </div>
           </div>
 
-          {/* Timer Card */}
-          <div style={{ ...cardStyle, border: timerActive ? `2px solid ${C.accent}` : "none", boxShadow: timerActive ? `0 8px 30px ${C.accent}22` : cardStyle.boxShadow }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ ...sectionLabelStyle, marginBottom: 8 }}>Sesión de Enfoque</div>
-                <div style={{ fontSize: 40, fontWeight: "800", color: timerActive ? C.accent : C.text, fontFamily: "monospace", letterSpacing: "-1px" }}>
-                  {fmtElapsed(timerElapsed)}
-                </div>
-                <input type="text" placeholder="¿En qué te enfocas?" value={currentFocus} onChange={(e) => setCurrentFocus(e.target.value)} style={{ background: "transparent", border: "none", color: C.text, fontSize: 15, marginTop: 8, outline: "none", width: "100%", fontWeight: "500" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <button type="button" onClick={toggleTimer} style={{ padding: "14px 24px", borderRadius: 16, border: "none", background: timerActive ? C.accentDim : C.accent, color: timerActive ? C.accent : "#fff", fontSize: 15, cursor: "pointer", fontWeight: "700", transition: "all 0.2s" }}>
-                  {timerActive ? "Pausa" : timerElapsed > 0 ? "Seguir" : "Iniciar"}
-                </button>
-                {timerElapsed > 0 && <button type="button" onClick={resetTimer} style={{ padding: "10px 16px", borderRadius: 12, border: "none", background: C.bg, color: C.textDim, fontSize: 13, cursor: "pointer", fontWeight: "600" }}>Detener</button>}
-              </div>
-            </div>
-          </div>
-
-          {/* Hábitos */}
           <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Hábitos</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <div style={sectionLabelStyle}>Hábitos Rápido</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {HABITS_LIST.map((h) => (
-                <button type="button" key={h.id} onClick={(e) => toggleHabit(e, h.id)} style={getPillStyle(habits[h.id], C.accent)}>
+                <button type="button" key={h.id} onClick={() => toggleHabit(h.id)} 
+                  style={{ padding: "12px 18px", borderRadius: 20, border: "none", background: habits[h.id] ? C.accent : C.bg, color: habits[h.id] ? "#fff" : C.textDim, fontSize: 14, cursor: "pointer", fontWeight: "600", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 18 }}>{h.icon}</span> {h.label}
                 </button>
               ))}
             </div>
           </div>
-
-          <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Consistencia ({monthStr})</div>
-            <HeatmapCalendar tasks={tasks} monthStr={monthStr} C={C} />
-          </div>
-
-          {/* Journal */}
-          <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Notas del día</div>
-            <textarea
-              placeholder="Reflexiones, ideas pendientes..."
-              value={journal} onChange={(e) => { setJournal(e.target.value); setJournalSaved(false); }}
-              style={{ ...INPUT_STYLE_BASE, minHeight: 100, resize: "none", lineHeight: 1.5 }}
-            />
-            <button type="button" onClick={saveJournal} style={{ marginTop: 16, width: "100%", padding: "14px 20px", borderRadius: 14, border: "none", background: journalSaved ? C.greenD : C.bg, color: journalSaved ? C.green : C.text, fontSize: 15, cursor: "pointer", fontWeight: "600", transition: "all 0.2s" }}>
-              {journalSaved ? "✓ Guardado correctamente" : "Guardar nota"}
-            </button>
-          </div>
-        </>}
+        </div>}
 
         {/* ══════════════════════════════════════════════════════════════
-            AGENDA / LISTA
+            AGENDA / LISTA Y TIMETABLE
         ══════════════════════════════════════════════════════════════ */}
-        {tab === "agenda" && (
-          <div>
-            <div style={{ ...sectionLabelStyle, marginBottom: 20, color: C.textDim }}>Pendientes ({pendingTasks.length})</div>
-            {pendingTasks.length === 0 && <div style={{ textAlign: "center", padding: 60, color: C.muted, fontWeight: "500", fontSize: 15 }}>Todo limpio por ahora. ✨</div>}
-            
-            {pendingTasks.map((t) => (
-              <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "20px", background: C.surface, borderRadius: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.03)", marginBottom: 12 }}>
-                <button onClick={() => toggleTaskStatus(t)} style={{ width: 28, height: 28, borderRadius: "50%", border: `2.5px solid ${C.accent}`, background: "transparent", cursor: "pointer", flexShrink: 0, marginTop: 2, transition: "background 0.2s" }}></button>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 17, fontWeight: "700", color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
-                    {t.title} {t.priority > 1 && <span style={{ fontSize: 14 }}>{"🔥".repeat(t.priority)}</span>}
-                  </div>
-                  {(t.note || t.time_target) && (
-                    <div style={{ fontSize: 14, color: C.textDim, marginTop: 6, lineHeight: 1.4, fontWeight: "500" }}>
-                      {t.time_target && <span style={{ color: C.accent, fontWeight: "700", marginRight: 8, background: C.accentDim, padding: "2px 6px", borderRadius: 6 }}>{t.time_target}</span>}
-                      {t.note}
+        {tab === "agenda" && <div className="animate-slide-up">
+          {/* VISTA DE ITINERARIO (TIMELINE) */}
+          <div style={{ ...cardStyle, background: "transparent", border: "none", boxShadow: "none", padding: "0 0 20px 0" }}>
+            <div style={{ ...sectionLabelStyle, color: C.textDim, paddingLeft: 8 }}>Horario del Día</div>
+            {timetableTasks.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 20, color: C.muted, fontSize: 14 }}>Sin horarios fijos hoy.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {timetableTasks.map((t) => (
+                  <div key={`time-${t.id}`} className={`task-item ${t.status === "done" ? "task-done" : ""}`} style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+                    <div style={{ width: 50, textAlign: "right", color: t.status === "done" ? C.muted : C.text, fontWeight: "700", fontSize: 15, paddingTop: 16 }}>
+                      {t.time_target}
                     </div>
-                  )}
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 12, fontWeight: "600" }}>{CATEGORIES.find(c => c.id === t.category)?.label || t.category}</div>
-                </div>
-              </div>
-            ))}
-
-            {doneTasks.length > 0 && (
-              <div style={{ marginTop: 40 }}>
-                <div style={{ ...sectionLabelStyle, marginBottom: 20, color: C.textDim }}>Completadas</div>
-                {doneTasks.map((t) => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: "transparent", borderRadius: 16, marginBottom: 8, opacity: 0.6 }}>
-                    <button onClick={() => toggleTaskStatus(t)} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: C.green, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: "bold" }}>✓</button>
-                    <div style={{ flex: 1, textDecoration: "line-through", color: C.textDim, fontSize: 15, fontWeight: "500" }}>{t.title}</div>
-                    <button onClick={() => deleteTask(t.id)} style={{ background: C.bg, border: "none", color: C.textDim, cursor: "pointer", padding: "8px 12px", borderRadius: 10, fontWeight: "600", fontSize: 12 }}>Borrar</button>
+                    <div style={{ width: 3, background: t.status === "done" ? C.border : C.accent, borderRadius: 3, opacity: 0.5 }} />
+                    <div style={{ flex: 1, background: C.surface, padding: 16, borderRadius: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.03)" }}>
+                      <div style={{ fontWeight: "700", color: C.text, fontSize: 16 }}>{t.title}</div>
+                      {t.note && <div style={{ fontSize: 13, color: C.textDim, marginTop: 4 }}>{t.note}</div>}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        )}
+
+          {/* LISTA DE PENDIENTES */}
+          <div style={{ ...sectionLabelStyle, marginBottom: 20, color: C.textDim, borderTop: `1px solid ${C.border}`, paddingTop: 20 }}>Cosas por hacer ({pendingTasks.length})</div>
+          {pendingTasks.map((t) => (
+            <div key={t.id} className="task-item animate-pop" style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "20px", background: C.surface, borderRadius: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.03)", marginBottom: 12 }}>
+              <button onClick={() => toggleTaskStatus(t)} style={{ width: 28, height: 28, borderRadius: "50%", border: `2.5px solid ${C.accent}`, background: "transparent", cursor: "pointer", flexShrink: 0, marginTop: 2, transition: "background 0.2s" }}></button>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: "700", color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
+                  {t.title} {t.priority > 1 && <span style={{ fontSize: 14 }}>{"🔥".repeat(t.priority)}</span>}
+                </div>
+                {(t.note || t.time_target) && (
+                  <div style={{ fontSize: 14, color: C.textDim, marginTop: 6, lineHeight: 1.4, fontWeight: "500" }}>
+                    {t.time_target && <span style={{ color: C.accent, fontWeight: "700", marginRight: 8, background: C.accentDim, padding: "4px 8px", borderRadius: 8 }}>{t.time_target}</span>}
+                    {t.note}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>}
 
         {/* ══════════════════════════════════════════════════════════════
             AGREGAR NUEVA
         ══════════════════════════════════════════════════════════════ */}
-        {tab === "add" && (
-          <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Nueva Tarea</div>
+        {tab === "add" && <div className="animate-slide-up" style={cardStyle}>
+          <div style={sectionLabelStyle}>Nueva Tarea</div>
 
-            <input type="text" placeholder="¿Qué necesitas hacer?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ ...INPUT_STYLE_BASE, fontSize: 20, fontWeight: "700", marginBottom: 16, padding: "20px 16px", background: "transparent", borderBottom: `2px solid ${C.bg}`, borderRadius: 0 }} />
-            
-            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={{ ...INPUT_STYLE_BASE, flex: 1, color: form.time ? C.text : C.muted, fontWeight: "600" }} />
-            </div>
-
-            <textarea placeholder="Notas, lugar o detalles extra..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...INPUT_STYLE_BASE, marginBottom: 24, minHeight: 100, resize: "none" }} />
-
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Categoría</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {CATEGORIES.map(c => (
-                  <button type="button" key={c.id} onClick={() => { playSound('click'); setForm({ ...form, category: c.id }); }} style={getCategoryBtnStyle(c.id)}>
-                    <span style={{ fontSize: 16 }}>{c.icon}</span> <span style={{ marginTop: 4, display: "block" }}>{c.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Nivel de Prioridad</div>
-              <StarRating value={form.priority} onChange={(r) => setForm({ ...form, priority: r })} C={C} />
-            </div>
-
-            <button type="button" onClick={addTask} style={{ width: "100%", padding: 18, borderRadius: 16, border: "none", cursor: "pointer", background: C.accent, color: "#fff", fontSize: 16, fontWeight: "700", boxShadow: `0 8px 20px ${C.accent}40` }}>
-              Guardar Tarea
-            </button>
+          <input type="text" placeholder="¿Qué necesitas hacer?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} 
+            style={{ ...INPUT_STYLE_BASE, fontSize: 20, fontWeight: "700", marginBottom: 16, padding: "20px 16px", background: "transparent", borderBottom: `2px solid ${C.bg}`, borderRadius: 0 }} />
+          
+          <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Horario (Opcional)</div>
+          
+          {/* SELECTOR RÁPIDO DE HORARIOS */}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 12, WebkitOverflowScrolling: "touch" }}>
+            {QUICK_TIMES.map(time => (
+              <button key={time} type="button" onClick={() => { playSound('click'); setForm({ ...form, time }); }}
+                style={{ padding: "8px 16px", borderRadius: 12, border: "none", background: form.time === time ? C.accent : C.bg, color: form.time === time ? "#fff" : C.textDim, fontWeight: "700", fontSize: 14, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }}>
+                {time}
+              </button>
+            ))}
           </div>
-        )}
+
+          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+            <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={{ ...INPUT_STYLE_BASE, flex: 1, color: form.time ? C.text : C.muted, fontWeight: "700" }} />
+          </div>
+
+          <textarea placeholder="Notas, detalles..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...INPUT_STYLE_BASE, marginBottom: 24, minHeight: 80, resize: "none" }} />
+
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Prioridad</div>
+            <StarRating value={form.priority} onChange={(r) => setForm({ ...form, priority: r })} C={C} />
+          </div>
+
+          <button type="button" onClick={addTask} style={{ width: "100%", padding: 18, borderRadius: 16, border: "none", cursor: "pointer", background: C.accent, color: "#fff", fontSize: 16, fontWeight: "700", boxShadow: `0 8px 20px ${C.accent}40`, transition: "transform 0.1s" }}
+            onMouseDown={e => e.currentTarget.style.transform = "scale(0.96)"} onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}>
+            Guardar Tarea
+          </button>
+        </div>}
 
         {/* ══════════════════════════════════════════════════════════════
             CONFIGURACIÓN
         ══════════════════════════════════════════════════════════════ */}
-        {tab === "config" && (
-          <div>
-            <div style={cardStyle}>
-              <div style={{ ...sectionLabelStyle, marginBottom: 24 }}>Ajustes de la App</div>
-              
-              <div style={{ fontSize: 14, color: C.text, marginBottom: 10, fontWeight: "600" }}>Meta de tareas por día</div>
-              <input type="number" min="1" value={dailyGoal} onChange={(e) => setDailyGoal(Number(e.target.value))} style={{ ...INPUT_STYLE_BASE, fontSize: 18, marginBottom: 28, fontWeight: "700" }} />
-
-              <div style={{ fontSize: 14, color: C.text, marginBottom: 14, fontWeight: "600" }}>Color de Acento</div>
-              <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-                {ACCENT_PRESETS.map((p) => (
-                  <button type="button" key={p.v} onClick={(e) => { e.preventDefault(); setAccent(p.v); }}
-                    style={{ width: 44, height: 44, borderRadius: "50%", border: `3px solid ${accent === p.v ? C.surface : "transparent"}`, background: p.v, cursor: "pointer", boxShadow: accent === p.v ? `0 0 0 2px ${p.v}` : "none", transition: "all 0.2s" }} />
-                ))}
-              </div>
-
-              <button type="button" onClick={saveConfig} style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", background: C.accentDim, color: C.accent, fontSize: 15, cursor: "pointer", fontWeight: "700" }}>
-                Guardar Ajustes
-              </button>
+        {tab === "config" && <div className="animate-slide-up">
+          <div style={cardStyle}>
+            <div style={{ ...sectionLabelStyle, marginBottom: 24 }}>Ajustes y Personalización</div>
+            
+            <div style={{ fontSize: 14, color: C.text, marginBottom: 10, fontWeight: "600" }}>Color de Acento</div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
+              {ACCENT_PRESETS.map((p) => (
+                <button type="button" key={p.v} onClick={(e) => { e.preventDefault(); setAccent(p.v); }}
+                  style={{ width: 44, height: 44, borderRadius: "50%", border: `3px solid ${accent === p.v ? C.surface : "transparent"}`, background: p.v, cursor: "pointer", boxShadow: accent === p.v ? `0 0 0 3px ${p.v}66` : "none", transition: "all 0.2s" }} />
+              ))}
             </div>
 
-            <div style={{ marginTop: 20 }}>
-              <button type="button" onClick={handleLogout} style={{ width: "100%", padding: 16, borderRadius: 14, background: C.surface, border: "none", color: C.red, fontSize: 15, cursor: "pointer", fontWeight: "600", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-                Cerrar Sesión
-              </button>
-            </div>
+            <button type="button" onClick={() => saveConfig()} style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", background: C.accentDim, color: C.accent, fontSize: 15, cursor: "pointer", fontWeight: "700" }}>Guardar Ajustes</button>
           </div>
-        )}
+        </div>}
 
       </div>
 
-      {/* ── BOTTOM NAV (IOS BLUR EFFECT) ───────────────────────────────── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}88`, display: "flex", justifyContent: "center", zIndex: 10, paddingBottom: "env(safe-area-inset-bottom)" }}>
+      {/* ── BOTTOM NAV ── */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}88`, display: "flex", justifyContent: "center", zIndex: 10, paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div style={{ display: "flex", width: "100%", maxWidth: 540 }}>
           {[
             { k: "dash",   icon: "◈", l: "Inicio" },
@@ -609,9 +455,9 @@ export default function App() {
             { k: "add",    icon: "+", l: "Crear"  },
             { k: "config", icon: "⚙", l: "Ajustes"}
           ].map((t) => (
-            <button type="button" key={t.k} onClick={(e) => { e.preventDefault(); playSound('click'); setTab(t.k); }}
+            <button type="button" key={t.k} onClick={() => { playSound('click'); setTab(t.k); }}
               style={{ flex: 1, padding: "14px 4px 10px", border: "none", background: "transparent", cursor: "pointer", color: tab === t.k ? C.accent : C.muted, transition: "color 0.2s" }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{t.icon}</div>
+              <div style={{ fontSize: 20, marginBottom: 4, transition: "transform 0.2s", transform: tab === t.k ? "scale(1.15)" : "scale(1)" }}>{t.icon}</div>
               <div style={{ fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>{t.l}</div>
             </button>
           ))}
