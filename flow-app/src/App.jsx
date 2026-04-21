@@ -44,9 +44,9 @@ const playSound = (type) => {
 // ─── CONSTANTES DE PRODUCTIVIDAD ────────────────────────────────────────────
 
 const CATEGORIES = [
-  { id: "work", label: "Trabajo / Proyecto", icon: "💻" },
+  { id: "work", label: "Trabajo", icon: "💻" },
   { id: "personal", label: "Personal", icon: "👤" },
-  { id: "itinerary", label: "Itinerario / Viaje", icon: "✈️" },
+  { id: "itinerary", label: "Itinerario", icon: "✈️" },
   { id: "study", label: "Estudio", icon: "📚" }
 ];
 
@@ -58,12 +58,12 @@ const HABITS_LIST = [
 ];
 
 const ACCENT_PRESETS = [
-  { name: "Esmeralda", v: "#10b981" },
-  { name: "Azul", v: "#3b82f6" },
-  { name: "Oro", v: "#f59e0b" },
-  { name: "Violeta", v: "#8b5cf6" },
-  { name: "Rosa", v: "#ec4899" },
-  { name: "Cyan", v: "#06b6d4" },
+  { name: "Blue iOS", v: "#007AFF" },
+  { name: "Green iOS", v: "#34C759" },
+  { name: "Orange iOS", v: "#FF9500" },
+  { name: "Purple iOS", v: "#AF52DE" },
+  { name: "Pink iOS", v: "#FF2D55" },
+  { name: "Teal iOS", v: "#5AC8FA" },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -82,21 +82,29 @@ const fmtElapsed = (ms) => {
 const getTodayStr = () => new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 const getMonthStr = () => new Date().toLocaleDateString("es-MX", { month: "short" });
 
-// ─── COLOR SYSTEM ────────────────────────────────────────────────────────────
+// ─── COLOR SYSTEM (ESTÉTICA IOS CLEAN) ───────────────────────────────────────
 
-const makeC = (accent = "#10b981") => ({
-  bg: "#0d1117", surface: "#161b22", card: "#1e242e", border: "#30363d",
-  green: "#10b981", greenD: "#065f46", red: "#ef4444", redD: "#7f1d1d",
-  accent, accentDim: accent + "25", accentMid: accent + "50",
-  gold: "#f59e0b", muted: "#8b949e", text: "#f0f6fc", textDim: "#c9d1d9",
+const makeC = (accent = "#007AFF") => ({
+  bg: "#F2F2F7",          // Fondo general del sistema iOS
+  surface: "#FFFFFF",     // Color de las tarjetas
+  card: "#FFFFFF",        
+  border: "#E5E5EA",      // Bordes grises muy suaves
+  green: "#34C759", greenD: "#E5F9EA", 
+  red: "#FF3B30", redD: "#FFECEB",
+  accent, accentDim: accent + "1A", accentMid: accent + "33",
+  gold: "#FF9500", 
+  text: "#1C1C1E",        // Texto principal (Casi negro)
+  textDim: "#8E8E93",     // Texto secundario
+  muted: "#AEAEB2",       // Detalles inactivos
 });
 
-const fontClassic = "'Georgia', serif";
-const fontClean   = "system-ui, -apple-system, sans-serif";
+// Tipografía nativa de Apple para una sensación perfecta en iPhone
+const fontClean   = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 const INPUT_STYLE_BASE = {
-  width: "100%", padding: "14px 16px", borderRadius: 10,
-  fontSize: 15, fontFamily: fontClean, boxSizing: "border-box", outline: "none",
+  width: "100%", padding: "16px", borderRadius: 14,
+  fontSize: 16, fontFamily: fontClean, boxSizing: "border-box", outline: "none",
+  background: "#F2F2F7", border: "none", color: "#1C1C1E", transition: "all 0.2s"
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -104,10 +112,10 @@ const INPUT_STYLE_BASE = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const StarRating = ({ value, onChange, C }) => (
-  <div style={{ display: "flex", gap: 6 }}>
+  <div style={{ display: "flex", gap: 8 }}>
     {[1, 2, 3].map((n) => (
       <button key={n} type="button" onClick={(e) => { e.preventDefault(); playSound('click'); onChange(n === value ? 0 : n); }}
-        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 26, color: n <= value ? C.gold : C.border, padding: "0", lineHeight: 1 }}>
+        style={{ background: n <= value ? C.gold + "22" : C.bg, border: "none", cursor: "pointer", fontSize: 22, color: n <= value ? C.gold : C.muted, padding: "10px", borderRadius: "50%", lineHeight: 1, transition: "all 0.2s" }}>
         🔥
       </button>
     ))}
@@ -134,7 +142,7 @@ const HeatmapCalendar = ({ tasks, monthStr, C }) => {
 
   const getColor = (day) => {
     const p = completedByDay[day];
-    if (!p) return C.surface; 
+    if (!p) return C.bg; 
     const intensity = Math.min(p / maxTasks, 1);
     const alpha = Math.round(intensity * 155 + 100).toString(16).padStart(2, "0");
     return `${C.accent}${alpha}`;
@@ -146,15 +154,17 @@ const HeatmapCalendar = ({ tasks, monthStr, C }) => {
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
         {["D","L","M","M","J","V","S"].map((d, i) => (
-          <div key={i} style={{ fontSize: 11, color: C.muted, textAlign: "center", paddingBottom: 6, fontWeight: "500" }}>{d}</div>
+          <div key={i} style={{ fontSize: 12, color: C.textDim, textAlign: "center", paddingBottom: 8, fontWeight: "600" }}>{d}</div>
         ))}
         {cells.map((day, i) => (
           <div key={i} style={{
-            aspectRatio: "1", borderRadius: 6, background: day ? getColor(day) : "transparent", border: day === today ? `2px solid ${C.text}` : "none",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: day ? (completedByDay[day] ? "#fff" : C.textDim) : "transparent",
-            fontWeight: day === today ? "bold" : "normal", fontFamily: fontClean
+            aspectRatio: "1", borderRadius: 8, background: day ? getColor(day) : "transparent", 
+            border: day === today && !completedByDay[day] ? `1px solid ${C.accent}` : "none",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, 
+            color: day ? (completedByDay[day] ? "#fff" : C.text) : "transparent",
+            fontWeight: day === today ? "bold" : "500", fontFamily: fontClean
           }}>{day || ""}</div>
         ))}
       </div>
@@ -186,8 +196,7 @@ export default function App() {
   const [currentFocus, setCurrentFocus] = useState("");
   const [journal,      setJournal]      = useState("");
   const [journalSaved, setJournalSaved] = useState(false);
-  const [accent,       setAccent]       = useState("#10b981");
-  const [customHex,    setCustomHex]    = useState("");
+  const [accent,       setAccent]       = useState("#007AFF");
   const [dailyGoal,    setDailyGoal]    = useState(5);
 
   const C = useMemo(() => makeC(accent), [accent]);
@@ -242,7 +251,6 @@ export default function App() {
       if (lastDate && lastDate !== today) await supabase.from("daily_habits").delete().eq("user_id", session.user.id).neq("id", "dummy");
       localStorage.setItem("bk_last_date", today);
 
-      // Aquí asumimos que crearás una tabla "tasks" en Supabase en lugar de "sessions"
       const { data: tData } = await supabase.from("tasks").select("*").eq("user_id", session.user.id).order("id", { ascending: false });
       const { data: hData } = await supabase.from("daily_habits").select("*").eq("user_id", session.user.id);
 
@@ -333,28 +341,28 @@ export default function App() {
 
   // ─── STYLE HELPERS ─────────────────────────────────────────────────────────
 
-  const inputStyle = { ...INPUT_STYLE_BASE, border: `1px solid ${C.border}`, background: C.surface, color: C.text };
-
   const getPillStyle = (on, color) => ({
-    padding: "10px 18px", borderRadius: 12, border: `2px solid ${on ? color : C.border}`,
-    background: on ? color : "transparent", color: on ? "#ffffff" : C.muted,
-    fontSize: 13, cursor: "pointer", fontFamily: fontClean, fontWeight: "bold",
-    transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)", transform: on ? "scale(1.05)" : "scale(1)", 
-    boxShadow: on ? `0 6px 12px ${color}40` : "none", display: "flex", alignItems: "center", gap: 6, outline: "none"
+    padding: "12px 20px", borderRadius: 20, border: "none",
+    background: on ? color : C.bg, color: on ? "#ffffff" : C.textDim,
+    fontSize: 14, cursor: "pointer", fontFamily: fontClean, fontWeight: "600",
+    transition: "all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)", transform: on ? "scale(1.02)" : "scale(1)", 
+    boxShadow: on ? `0 4px 12px ${color}40` : "none", display: "flex", alignItems: "center", gap: 8, outline: "none"
   });
 
   const getCategoryBtnStyle = (v) => ({
-    flex: 1, padding: "12px 6px", borderRadius: 10, border: `1px solid ${form.category === v ? C.accent + "88" : C.border}`,
-    cursor: "pointer", background: form.category === v ? C.accentDim : C.surface, color: form.category === v ? C.accent : C.muted,
+    flex: 1, padding: "14px 8px", borderRadius: 14, border: "none",
+    cursor: "pointer", background: form.category === v ? C.accentDim : C.bg, 
+    color: form.category === v ? C.accent : C.textDim,
     fontFamily: fontClean, fontSize: 13, fontWeight: "600", transition: "all 0.2s",
   });
 
   const cardStyle = {
-    background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+    background: C.card, borderRadius: 20, padding: 24, marginBottom: 20, 
+    boxShadow: "0 4px 24px rgba(0,0,0,0.04)" // Sombra ultra suave tipo Apple
   };
 
   const sectionLabelStyle = {
-    fontSize: 12, fontWeight: "600", color: C.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16, fontFamily: fontClean
+    fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 16, fontFamily: fontClean
   };
 
   // ─── LOGIN SCREEN ────────────────────────────────────────────────────────
@@ -362,21 +370,22 @@ export default function App() {
   if (!session) {
     return (
       <div style={{ background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: fontClean }}>
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: 36, width: "100%", maxWidth: 380, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <div style={{ fontSize: 12, fontWeight: "600", color: C.muted, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Productividad y Flujo</div>
-            <div style={{ fontSize: 32, fontWeight: "bold", color: C.text, fontFamily: fontClassic }}>Flow & Focus 🌊</div>
+        <div style={{ background: C.surface, borderRadius: 24, padding: 40, width: "100%", maxWidth: 380, boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}>
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🌊</div>
+            <div style={{ fontSize: 28, fontWeight: "800", color: C.text, letterSpacing: "-0.5px" }}>Flow & Focus</div>
+            <div style={{ fontSize: 14, color: C.textDim, marginTop: 8, fontWeight: "500" }}>Tu sistema de productividad</div>
           </div>
           <form onSubmit={handleAuth}>
-            <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required style={{ ...inputStyle, marginBottom: 16 }} />
-            <input type="password" placeholder="Contraseña" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required style={{ ...inputStyle, marginBottom: 24 }} />
-            <button type="submit" disabled={authLoading} onClick={() => playSound('click')} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: C.accentDim, color: C.accent, fontSize: 15, fontWeight: "bold", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>
+            <input type="email" placeholder="Correo electrónico" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} required style={{ ...INPUT_STYLE_BASE, marginBottom: 16 }} />
+            <input type="password" placeholder="Contraseña" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} required style={{ ...INPUT_STYLE_BASE, marginBottom: 28 }} />
+            <button type="submit" disabled={authLoading} onClick={() => playSound('click')} style={{ width: "100%", padding: 18, borderRadius: 16, border: "none", background: C.accent, color: "#fff", fontSize: 16, fontWeight: "700", cursor: "pointer", transition: "opacity 0.2s", opacity: authLoading ? 0.7 : 1 }}>
               {authLoading ? "Cargando..." : isLogin ? "Acceder" : "Crear cuenta"}
             </button>
           </form>
           <div style={{ textAlign: "center", marginTop: 24 }}>
-            <button type="button" onClick={() => { playSound('click'); setIsLogin(!isLogin); }} style={{ background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", textDecoration: "underline" }}>
-              {isLogin ? "¿Sin cuenta? Regístrate" : "Ya tengo cuenta"}
+            <button type="button" onClick={() => { playSound('click'); setIsLogin(!isLogin); }} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontWeight: "600", cursor: "pointer" }}>
+              {isLogin ? "¿No tienes cuenta? Regístrate" : "Ya tengo cuenta"}
             </button>
           </div>
         </div>
@@ -384,26 +393,26 @@ export default function App() {
     );
   }
 
-  if (!loaded) return <div style={{ background: C.bg, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontFamily: fontClean, letterSpacing: 2, fontSize: 14 }}>CARGANDO...</div>;
+  if (!loaded) return <div style={{ background: C.bg, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.textDim, fontFamily: fontClean, fontWeight: "600", fontSize: 15 }}>Cargando datos...</div>;
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // RENDER PRINCIPAL
   // ═══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div style={{ fontFamily: fontClean, background: C.bg, minHeight: "100vh", color: C.text, paddingBottom: 90 }}>
-      {flash && <div style={{ position: "fixed", inset: 0, background: "rgba(16,185,129,0.08)", pointerEvents: "none", zIndex: 999 }} />}
+    <div style={{ fontFamily: fontClean, background: C.bg, minHeight: "100vh", color: C.text, paddingBottom: 100 }}>
+      {flash && <div style={{ position: "fixed", inset: 0, background: "rgba(52,199,89,0.1)", pointerEvents: "none", zIndex: 999, transition: "background 0.5s" }} />}
 
-      {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* ── HEADER IOS STYLE ─────────────────────────────────────────────── */}
+      <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50, padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}88` }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: "600", color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>Día: {todayStr}</div>
-          <div style={{ fontSize: 24, fontWeight: "bold", color: C.text, fontFamily: fontClassic }}>Focus & Flow <span style={{ color: C.accent }}>🌊</span></div>
+          <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{todayStr}</div>
+          <div style={{ fontSize: 28, fontWeight: "800", color: C.text, letterSpacing: "-0.5px" }}>Focus <span style={{ color: C.accent }}>🌊</span></div>
         </div>
         <div style={{ textAlign: "right" }}>
           {timerActive && (
-            <div style={{ fontSize: 16, color: C.accent, fontWeight: "bold", marginTop: 4, fontFamily: "monospace", padding: "4px 8px", background: C.accentDim, borderRadius: 8 }}>
-              ⏱ {fmtElapsed(timerElapsed)}
+            <div style={{ fontSize: 16, color: C.accent, fontWeight: "700", fontFamily: "monospace", padding: "6px 12px", background: C.accentDim, borderRadius: 12 }}>
+              {fmtElapsed(timerElapsed)}
             </div>
           )}
         </div>
@@ -418,44 +427,43 @@ export default function App() {
 
           {/* Meta del Día */}
           <div style={cardStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={sectionLabelStyle}>Progreso Diario</div>
-              <div style={{ fontSize: 14, color: completedToday >= dailyGoal ? C.green : C.accent, fontWeight: "bold", fontFamily: fontClassic }}>
-                {completedToday} / {dailyGoal} Tareas
+              <div style={{ fontSize: 15, color: completedToday >= dailyGoal ? C.green : C.textDim, fontWeight: "700" }}>
+                {completedToday} de {dailyGoal}
               </div>
             </div>
-            <div style={{ height: 8, background: C.surface, borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ height: "100%", borderRadius: 8, transition: "width 0.5s ease", width: `${progressPct}%`, background: progressPct >= 100 ? C.green : C.accent }} />
+            <div style={{ height: 10, background: C.bg, borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 10, transition: "width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)", width: `${progressPct}%`, background: progressPct >= 100 ? C.green : C.accent }} />
             </div>
-            {progressPct >= 100 && <div style={{ fontSize: 12, color: C.green, marginTop: 8, fontWeight: "bold", textAlign: "center" }}>¡Meta diaria alcanzada! 🎉</div>}
           </div>
 
           {/* Timer Card */}
-          <div style={{ ...cardStyle, border: `1px solid ${timerActive ? C.accentMid : C.border}` }}>
+          <div style={{ ...cardStyle, border: timerActive ? `2px solid ${C.accent}` : "none", boxShadow: timerActive ? `0 8px 30px ${C.accent}22` : cardStyle.boxShadow }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ ...sectionLabelStyle, marginBottom: 8 }}>Sesión de Enfoque</div>
-                <div style={{ fontSize: 36, fontWeight: "bold", color: timerActive ? C.accent : C.muted, fontFamily: "monospace" }}>
+                <div style={{ fontSize: 40, fontWeight: "800", color: timerActive ? C.accent : C.text, fontFamily: "monospace", letterSpacing: "-1px" }}>
                   {fmtElapsed(timerElapsed)}
                 </div>
-                <input type="text" placeholder="¿En qué te enfocas?" value={currentFocus} onChange={(e) => setCurrentFocus(e.target.value)} style={{ background: "transparent", border: "none", color: C.text, fontSize: 14, marginTop: 8, outline: "none", width: "100%" }} />
+                <input type="text" placeholder="¿En qué te enfocas?" value={currentFocus} onChange={(e) => setCurrentFocus(e.target.value)} style={{ background: "transparent", border: "none", color: C.text, fontSize: 15, marginTop: 8, outline: "none", width: "100%", fontWeight: "500" }} />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button type="button" onClick={toggleTimer} style={{ padding: "12px 20px", borderRadius: 12, border: `1px solid ${timerActive ? C.accent : C.border}`, background: timerActive ? C.accentDim : C.surface, color: timerActive ? C.accent : C.text, fontSize: 14, cursor: "pointer", fontWeight: "bold" }}>
-                  {timerActive ? "⏸ Pausa" : timerElapsed > 0 ? "▶ Seguir" : "▶ Iniciar"}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button type="button" onClick={toggleTimer} style={{ padding: "14px 24px", borderRadius: 16, border: "none", background: timerActive ? C.accentDim : C.accent, color: timerActive ? C.accent : "#fff", fontSize: 15, cursor: "pointer", fontWeight: "700", transition: "all 0.2s" }}>
+                  {timerActive ? "Pausa" : timerElapsed > 0 ? "Seguir" : "Iniciar"}
                 </button>
-                {timerElapsed > 0 && <button type="button" onClick={resetTimer} style={{ padding: "8px 16px", borderRadius: 12, border: `1px solid ${C.border}`, background: "transparent", color: C.muted, fontSize: 12, cursor: "pointer" }}>Detener</button>}
+                {timerElapsed > 0 && <button type="button" onClick={resetTimer} style={{ padding: "10px 16px", borderRadius: 12, border: "none", background: C.bg, color: C.textDim, fontSize: 13, cursor: "pointer", fontWeight: "600" }}>Detener</button>}
               </div>
             </div>
           </div>
 
           {/* Hábitos */}
           <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Hábitos de hoy</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <div style={sectionLabelStyle}>Hábitos</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               {HABITS_LIST.map((h) => (
                 <button type="button" key={h.id} onClick={(e) => toggleHabit(e, h.id)} style={getPillStyle(habits[h.id], C.accent)}>
-                  {h.icon} {h.label} {habits[h.id] && <span style={{ marginLeft: 4 }}>✓</span>}
+                  <span style={{ fontSize: 18 }}>{h.icon}</span> {h.label}
                 </button>
               ))}
             </div>
@@ -468,14 +476,14 @@ export default function App() {
 
           {/* Journal */}
           <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Notas / Pensamientos del día</div>
+            <div style={sectionLabelStyle}>Notas del día</div>
             <textarea
-              placeholder="Ideas, reflexiones, cosas que no quiero olvidar..."
+              placeholder="Reflexiones, ideas pendientes..."
               value={journal} onChange={(e) => { setJournal(e.target.value); setJournalSaved(false); }}
-              style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontSize: 14, fontFamily: fontClean, boxSizing: "border-box", outline: "none", minHeight: 90, resize: "none", lineHeight: 1.6 }}
+              style={{ ...INPUT_STYLE_BASE, minHeight: 100, resize: "none", lineHeight: 1.5 }}
             />
-            <button type="button" onClick={saveJournal} style={{ marginTop: 12, padding: "10px 20px", borderRadius: 10, border: `1px solid ${journalSaved ? C.green : C.border}`, background: journalSaved ? C.greenD + "44" : C.surface, color: journalSaved ? C.green : C.text, fontSize: 13, cursor: "pointer", fontWeight: "600" }}>
-              {journalSaved ? "✓ Guardado" : "Guardar nota"}
+            <button type="button" onClick={saveJournal} style={{ marginTop: 16, width: "100%", padding: "14px 20px", borderRadius: 14, border: "none", background: journalSaved ? C.greenD : C.bg, color: journalSaved ? C.green : C.text, fontSize: 15, cursor: "pointer", fontWeight: "600", transition: "all 0.2s" }}>
+              {journalSaved ? "✓ Guardado correctamente" : "Guardar nota"}
             </button>
           </div>
         </>}
@@ -485,35 +493,35 @@ export default function App() {
         ══════════════════════════════════════════════════════════════ */}
         {tab === "agenda" && (
           <div>
-            <div style={{ ...sectionLabelStyle, marginBottom: 20 }}>Pendientes ({pendingTasks.length})</div>
-            {pendingTasks.length === 0 && <div style={{ textAlign: "center", padding: 40, color: C.muted }}>Todo limpio por ahora. ✨</div>}
+            <div style={{ ...sectionLabelStyle, marginBottom: 20, color: C.textDim }}>Pendientes ({pendingTasks.length})</div>
+            {pendingTasks.length === 0 && <div style={{ textAlign: "center", padding: 60, color: C.muted, fontWeight: "500", fontSize: 15 }}>Todo limpio por ahora. ✨</div>}
             
             {pendingTasks.map((t) => (
-              <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px", background: C.card, borderRadius: 12, border: `1px solid ${C.border}`, marginBottom: 10 }}>
-                <button onClick={() => toggleTaskStatus(t)} style={{ width: 24, height: 24, borderRadius: "50%", border: `2px solid ${C.accent}`, background: "transparent", cursor: "pointer", flexShrink: 0, marginTop: 2 }}></button>
+              <div key={t.id} style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "20px", background: C.surface, borderRadius: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.03)", marginBottom: 12 }}>
+                <button onClick={() => toggleTaskStatus(t)} style={{ width: 28, height: 28, borderRadius: "50%", border: `2.5px solid ${C.accent}`, background: "transparent", cursor: "pointer", flexShrink: 0, marginTop: 2, transition: "background 0.2s" }}></button>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: "bold", color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
-                    {t.title} {t.priority > 1 && <span style={{ fontSize: 12 }}>{"🔥".repeat(t.priority)}</span>}
+                  <div style={{ fontSize: 17, fontWeight: "700", color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
+                    {t.title} {t.priority > 1 && <span style={{ fontSize: 14 }}>{"🔥".repeat(t.priority)}</span>}
                   </div>
                   {(t.note || t.time_target) && (
-                    <div style={{ fontSize: 13, color: C.textDim, marginTop: 4, lineHeight: 1.4 }}>
-                      {t.time_target && <span style={{ color: C.accent, fontWeight: "bold", marginRight: 8 }}>{t.time_target}</span>}
+                    <div style={{ fontSize: 14, color: C.textDim, marginTop: 6, lineHeight: 1.4, fontWeight: "500" }}>
+                      {t.time_target && <span style={{ color: C.accent, fontWeight: "700", marginRight: 8, background: C.accentDim, padding: "2px 6px", borderRadius: 6 }}>{t.time_target}</span>}
                       {t.note}
                     </div>
                   )}
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 8, textTransform: "uppercase" }}>{CATEGORIES.find(c => c.id === t.category)?.label || t.category} · {t.date}</div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 12, fontWeight: "600" }}>{CATEGORIES.find(c => c.id === t.category)?.label || t.category}</div>
                 </div>
               </div>
             ))}
 
             {doneTasks.length > 0 && (
-              <div style={{ marginTop: 32 }}>
-                <div style={{ ...sectionLabelStyle, marginBottom: 20 }}>Completadas Recientes</div>
+              <div style={{ marginTop: 40 }}>
+                <div style={{ ...sectionLabelStyle, marginBottom: 20, color: C.textDim }}>Completadas</div>
                 {doneTasks.map((t) => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, marginBottom: 8, opacity: 0.6 }}>
-                    <button onClick={() => toggleTaskStatus(t)} style={{ width: 24, height: 24, borderRadius: "50%", border: "none", background: C.green, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>✓</button>
-                    <div style={{ flex: 1, textDecoration: "line-through", color: C.muted, fontSize: 14 }}>{t.title}</div>
-                    <button onClick={() => deleteTask(t.id)} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", padding: 4 }}>✕</button>
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: "transparent", borderRadius: 16, marginBottom: 8, opacity: 0.6 }}>
+                    <button onClick={() => toggleTaskStatus(t)} style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: C.green, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: "bold" }}>✓</button>
+                    <div style={{ flex: 1, textDecoration: "line-through", color: C.textDim, fontSize: 15, fontWeight: "500" }}>{t.title}</div>
+                    <button onClick={() => deleteTask(t.id)} style={{ background: C.bg, border: "none", color: C.textDim, cursor: "pointer", padding: "8px 12px", borderRadius: 10, fontWeight: "600", fontSize: 12 }}>Borrar</button>
                   </div>
                 ))}
               </div>
@@ -526,34 +534,34 @@ export default function App() {
         ══════════════════════════════════════════════════════════════ */}
         {tab === "add" && (
           <div style={cardStyle}>
-            <div style={sectionLabelStyle}>Nueva Tarea o Evento</div>
+            <div style={sectionLabelStyle}>Nueva Tarea</div>
 
-            <input type="text" placeholder="¿Qué necesitas hacer?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ ...inputStyle, fontSize: 18, fontWeight: "bold", marginBottom: 16 }} />
+            <input type="text" placeholder="¿Qué necesitas hacer?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ ...INPUT_STYLE_BASE, fontSize: 20, fontWeight: "700", marginBottom: 16, padding: "20px 16px", background: "transparent", borderBottom: `2px solid ${C.bg}`, borderRadius: 0 }} />
             
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={{ ...inputStyle, flex: 1, color: form.time ? C.text : C.muted }} />
+            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={{ ...INPUT_STYLE_BASE, flex: 1, color: form.time ? C.text : C.muted, fontWeight: "600" }} />
             </div>
 
-            <textarea placeholder="Notas adicionales, dirección, detalles..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...inputStyle, marginBottom: 20, minHeight: 80, resize: "none" }} />
+            <textarea placeholder="Notas, lugar o detalles extra..." value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...INPUT_STYLE_BASE, marginBottom: 24, minHeight: 100, resize: "none" }} />
 
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: "600", color: C.muted, textTransform: "uppercase", marginBottom: 12 }}>Categoría</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Categoría</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {CATEGORIES.map(c => (
                   <button type="button" key={c.id} onClick={() => { playSound('click'); setForm({ ...form, category: c.id }); }} style={getCategoryBtnStyle(c.id)}>
-                    {c.icon} {c.label}
+                    <span style={{ fontSize: 16 }}>{c.icon}</span> <span style={{ marginTop: 4, display: "block" }}>{c.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: "600", color: C.muted, textTransform: "uppercase", marginBottom: 12 }}>Prioridad</div>
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 12, fontWeight: "600", color: C.textDim, textTransform: "uppercase", marginBottom: 12 }}>Nivel de Prioridad</div>
               <StarRating value={form.priority} onChange={(r) => setForm({ ...form, priority: r })} C={C} />
             </div>
 
-            <button type="button" onClick={addTask} style={{ width: "100%", padding: 18, borderRadius: 12, border: "none", cursor: "pointer", background: C.accentDim, color: C.accent, fontSize: 16, fontWeight: "bold", letterSpacing: 1 }}>
-              GUARDAR
+            <button type="button" onClick={addTask} style={{ width: "100%", padding: 18, borderRadius: 16, border: "none", cursor: "pointer", background: C.accent, color: "#fff", fontSize: 16, fontWeight: "700", boxShadow: `0 8px 20px ${C.accent}40` }}>
+              Guardar Tarea
             </button>
           </div>
         )}
@@ -564,27 +572,27 @@ export default function App() {
         {tab === "config" && (
           <div>
             <div style={cardStyle}>
-              <div style={sectionLabelStyle}>⚙️ Preferencias</div>
+              <div style={{ ...sectionLabelStyle, marginBottom: 24 }}>Ajustes de la App</div>
               
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, fontWeight: "500" }}>Meta de tareas por día</div>
-              <input type="number" min="1" value={dailyGoal} onChange={(e) => setDailyGoal(Number(e.target.value))} style={{ ...inputStyle, fontFamily: fontClassic, fontSize: 18, marginBottom: 24 }} />
+              <div style={{ fontSize: 14, color: C.text, marginBottom: 10, fontWeight: "600" }}>Meta de tareas por día</div>
+              <input type="number" min="1" value={dailyGoal} onChange={(e) => setDailyGoal(Number(e.target.value))} style={{ ...INPUT_STYLE_BASE, fontSize: 18, marginBottom: 28, fontWeight: "700" }} />
 
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, fontWeight: "500" }}>Color del tema</div>
-              <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 14, color: C.text, marginBottom: 14, fontWeight: "600" }}>Color de Acento</div>
+              <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
                 {ACCENT_PRESETS.map((p) => (
                   <button type="button" key={p.v} onClick={(e) => { e.preventDefault(); setAccent(p.v); }}
-                    style={{ width: 36, height: 36, borderRadius: "50%", border: `2px solid ${accent === p.v ? "#fff" : "transparent"}`, background: p.v, cursor: "pointer", boxShadow: accent === p.v ? `0 0 0 2px ${p.v}` : "none", transition: "all 0.2s" }} />
+                    style={{ width: 44, height: 44, borderRadius: "50%", border: `3px solid ${accent === p.v ? C.surface : "transparent"}`, background: p.v, cursor: "pointer", boxShadow: accent === p.v ? `0 0 0 2px ${p.v}` : "none", transition: "all 0.2s" }} />
                 ))}
               </div>
 
-              <button type="button" onClick={saveConfig} style={{ width: "100%", padding: 16, borderRadius: 12, border: "none", background: C.accentDim, color: C.accent, fontSize: 14, cursor: "pointer", fontWeight: "bold", letterSpacing: 1 }}>
-                GUARDAR AJUSTES
+              <button type="button" onClick={saveConfig} style={{ width: "100%", padding: 16, borderRadius: 14, border: "none", background: C.accentDim, color: C.accent, fontSize: 15, cursor: "pointer", fontWeight: "700" }}>
+                Guardar Ajustes
               </button>
             </div>
 
-            <div style={{ marginTop: 32, borderTop: `1px solid ${C.border}`, paddingTop: 24 }}>
-              <button type="button" onClick={handleLogout} style={{ width: "100%", padding: 16, borderRadius: 12, background: "transparent", border: `1px solid ${C.muted}`, color: C.textDim, fontSize: 14, cursor: "pointer", fontWeight: "600" }}>
-                CERRAR SESIÓN
+            <div style={{ marginTop: 20 }}>
+              <button type="button" onClick={handleLogout} style={{ width: "100%", padding: 16, borderRadius: 14, background: C.surface, border: "none", color: C.red, fontSize: 15, cursor: "pointer", fontWeight: "600", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
+                Cerrar Sesión
               </button>
             </div>
           </div>
@@ -592,8 +600,8 @@ export default function App() {
 
       </div>
 
-      {/* ── BOTTOM NAV ─────────────────────────────────────────────────── */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.surface, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center", zIndex: 10, paddingBottom: "env(safe-area-inset-bottom)" }}>
+      {/* ── BOTTOM NAV (IOS BLUR EFFECT) ───────────────────────────────── */}
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: `1px solid ${C.border}88`, display: "flex", justifyContent: "center", zIndex: 10, paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div style={{ display: "flex", width: "100%", maxWidth: 540 }}>
           {[
             { k: "dash",   icon: "◈", l: "Inicio" },
@@ -602,9 +610,9 @@ export default function App() {
             { k: "config", icon: "⚙", l: "Ajustes"}
           ].map((t) => (
             <button type="button" key={t.k} onClick={(e) => { e.preventDefault(); playSound('click'); setTab(t.k); }}
-              style={{ flex: 1, padding: "16px 4px 12px", border: "none", background: "transparent", cursor: "pointer", color: tab === t.k ? C.accent : C.muted, transition: "color 0.2s" }}>
-              <div style={{ fontSize: 18, marginBottom: 4 }}>{t.icon}</div>
-              <div style={{ fontSize: 10, fontWeight: "600", textTransform: "uppercase" }}>{t.l}</div>
+              style={{ flex: 1, padding: "14px 4px 10px", border: "none", background: "transparent", cursor: "pointer", color: tab === t.k ? C.accent : C.muted, transition: "color 0.2s" }}>
+              <div style={{ fontSize: 20, marginBottom: 4 }}>{t.icon}</div>
+              <div style={{ fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>{t.l}</div>
             </button>
           ))}
         </div>
