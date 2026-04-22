@@ -1,54 +1,114 @@
 import { useState, useCallback } from "react";
-import { CATS, DAYS_SH, ALL_TIMES, QUICK_TASKS, FONT, SERIF } from "../utils/constants.js";
+import { CATS, DAYS_SH, ALL_TIMES, QUICK_TASKS, PRIORITIES, FONT, SERIF } from "../utils/constants.js";
+import { todayISO, toISO } from "../utils/dates.js";
 import { sfx } from "../utils/helpers.js";
 import { IS } from "./shared.jsx";
 
-export default function AddForm({ onSave }) {
-  const [mode,  setMode]  = useState("once");
-  const [title, setTitle] = useState("");
-  const [ts,    setTs]    = useState("");
-  const [te,    setTe]    = useState("");
-  const [cat,   setCat]   = useState("");
-  const [notes, setNotes] = useState("");
-  const [rType, setRType] = useState("daily");
-  // Store as actual numbers, not strings
-  const [rDays, setRDays] = useState([1,2,3,4,5]);
+// ── Natural language time parser ───────────────────────────────────────────────
+function parseNL(text) {
+  if (!text) return { title:text, time_start:null };
+  let title = text;
+  let time_start = null;
+
+  // "a las HH" or "a las HH:MM"
+  const tMatch = text.match(/\ba\s+las?\s+(\d{1,2})(?::(\d{2}))?\b/i);
+  if (tMatch) {
+    const h = parseInt(tMatch[1]);
+    const m = tMatch[2] ? parseInt(tMatch[2]) : 0;
+    if (h >= 0 && h <= 23) {
+      time_start = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+      title = text.replace(tMatch[0], "").replace(/\s{2,}/g," ").trim();
+    }
+  }
+  return { title, time_start };
+}
+
+// ── Section label ──────────────────────────────────────────────────────────────
+function SL({ children }) {
+  return <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10 }}>{children}</div>;
+}
+
+export default function AddForm({ onSave, selectedDate }) {
+  const [mode,     setMode]     = useState("once");
+  const [title,    setTitle]    = useState("");
+  const [ts,       setTs]       = useState("");
+  const [te,       setTe]       = useState("");
+  const [cat,      setCat]      = useState("");
+  const [notes,    setNotes]    = useState("");
+  const [rType,    setRType]    = useState("daily");
+  const [rDays,    setRDays]    = useState([1,2,3,4,5]);
+  const [priority, setPriority] = useState(3); // default: Normal
 
   const toggleDay = useCallback(i => {
-    const num = Number(i);
-    setRDays(p => p.includes(num) ? p.filter(x => x !== num) : [...p, num]);
+    const n = Number(i);
+    setRDays(p => p.includes(n) ? p.filter(x=>x!==n) : [...p,n]);
   }, []);
+
+  // Handle title change: try NL parse for time
+  const handleTitleChange = e => {
+    const v = e.target.value;
+    setTitle(v);
+    const { time_start } = parseNL(v);
+    if (time_start && !ts) setTs(time_start);
+  };
 
   const handleSubmit = useCallback(e => {
     e.preventDefault();
     if (!title.trim()) return;
+    const parsed = parseNL(title);
     onSave({
-      title: title.trim(),
-      timeStart: ts || null,
+      title:     parsed.title.trim() || title.trim(),
+      timeStart: ts || parsed.time_start || null,
       timeEnd:   te || null,
       category:  cat || null,
       notes:     notes || "",
+      priority,
       mode,
       rType,
-      // Always persist as number array — the root of the recurring bug
-      rDays: rDays.map(Number),
+      rDays:     rDays.map(Number),
     });
-    setTitle(""); setTs(""); setTe(""); setCat(""); setNotes("");
-  }, [title, ts, te, cat, notes, mode, rType, rDays, onSave]);
+    setTitle(""); setTs(""); setTe(""); setCat(""); setNotes(""); setPriority(3);
+  }, [title, ts, te, cat, notes, priority, mode, rType, rDays, onSave]);
+
+  const pr = PRIORITIES.find(p=>p.id===priority);
 
   return (
-    <div className="su" style={{ background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:28,padding:24 }}>
-      <div style={{ fontSize:22,fontWeight:900,fontFamily:SERIF,marginBottom:20,letterSpacing:"-.4px" }}>Nueva tarea</div>
-      <form onSubmit={handleSubmit}>
+    <div className="su">
 
-        {/* Title */}
-        <input type="text" placeholder="¿Qué harás?" autoFocus value={title} onChange={e=>setTitle(e.target.value)}
-          style={{ ...IS,fontSize:19,fontWeight:800,padding:"11px 0",background:"transparent",border:"none",borderBottom:"1px solid rgba(255,255,255,.09)",borderRadius:0,marginBottom:20 }}
-        />
+      {/* ── Title ── */}
+      <div style={{ marginBottom:26 }}>
+        <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:14 }}>
+          📌 Nueva Tarea
+        </div>
+        <form onSubmit={handleSubmit} id="task-form">
+          <div style={{ position:"relative" }}>
+            <input
+              type="text"
+              placeholder='¿Qué harás? · prueba "a las 9 leer"'
+              autoFocus
+              value={title}
+              onChange={handleTitleChange}
+              style={{
+                ...IS,
+                fontSize:18, fontWeight:800, padding:"14px 16px",
+                borderRadius:16,
+                background:"rgba(255,255,255,.055)",
+                border:"1px solid rgba(255,255,255,.1)",
+              }}
+            />
+            {ts && (
+              <div style={{ position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"rgba(255,255,255,.35)",fontWeight:700,background:"rgba(123,104,238,.25)",padding:"3px 9px",borderRadius:8 }}>
+                🕐 {ts}
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
 
-        {/* Quick tasks */}
-        <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.26)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10 }}>Un clic</div>
-        <div style={{ display:"flex",gap:7,overflowX:"auto",paddingBottom:12,marginBottom:18 }}>
+      {/* ── Quick tasks ── */}
+      <div style={{ marginBottom:24 }}>
+        <SL>Un clic</SL>
+        <div style={{ display:"flex",gap:7,overflowX:"auto",paddingBottom:4 }}>
           {QUICK_TASKS.map(t=>(
             <button key={t} type="button" onClick={()=>{sfx("click");setTitle(t);}} style={{
               padding:"8px 13px",borderRadius:11,border:"none",whiteSpace:"nowrap",
@@ -58,57 +118,81 @@ export default function AddForm({ onSave }) {
             }}>{t}</button>
           ))}
         </div>
+      </div>
 
-        {/* Mode */}
-        <div style={{ display:"flex",gap:8,marginBottom:18 }}>
+      {/* ── Priority ── */}
+      <div style={{ marginBottom:24 }}>
+        <SL>Prioridad</SL>
+        <div style={{ display:"flex",gap:8 }}>
+          {PRIORITIES.map(p=>(
+            <button key={p.id} type="button" onClick={()=>{sfx("click");setPriority(p.id);}} style={{
+              flex:1, padding:"10px 4px", borderRadius:13, border:"none", cursor:"pointer",
+              background: priority===p.id ? p.bg : "rgba(255,255,255,.04)",
+              outline: priority===p.id ? `1.5px solid ${p.color}55` : "1.5px solid transparent",
+              transition:"all .18s",
+              display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+            }}>
+              <span style={{ fontSize:16 }}>{p.icon}</span>
+              <span style={{ fontSize:9,fontWeight:700,color:priority===p.id?p.color:"rgba(255,255,255,.35)",textTransform:"uppercase",letterSpacing:.4 }}>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Once / Repeat mode ── */}
+      <div style={{ marginBottom:24 }}>
+        <SL>Frecuencia</SL>
+        <div style={{ display:"flex",gap:8 }}>
           {[["once","📌 Una vez"],["recurring","↻ Repetir"]].map(([m,l])=>(
             <button key={m} type="button" onClick={()=>{sfx("click");setMode(m);}} style={{
-              flex:1,padding:"11px",borderRadius:13,border:"none",cursor:"pointer",
-              fontWeight:700,fontSize:13,fontFamily:FONT,
-              background:mode===m?"#F8F9FF":"rgba(255,255,255,.05)",
+              flex:1, padding:"11px", borderRadius:13, border:"none", cursor:"pointer",
+              fontWeight:700, fontSize:13, fontFamily:FONT,
+              background:mode===m?"#F8F9FF":"rgba(255,255,255,.06)",
               color:mode===m?"#080B14":"rgba(255,255,255,.45)",transition:"all .2s",
             }}>{l}</button>
           ))}
         </div>
+      </div>
 
-        {/* Recurring options */}
-        {mode === "recurring" && (
-          <div style={{ background:"rgba(123,104,238,.08)",border:"1px solid rgba(123,104,238,.18)",borderRadius:16,padding:16,marginBottom:18 }}>
-            <div style={{ fontSize:10,fontWeight:700,color:"rgba(163,149,255,.8)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:12 }}>Frecuencia</div>
-            <div style={{ display:"flex",gap:7,flexWrap:"wrap",marginBottom:rType==="custom"?14:0 }}>
-              {[["daily","Cada día"],["weekdays","L – V"],["weekends","S – D"],["custom","Elegir días"]].map(([k,l])=>(
-                <button key={k} type="button" onClick={()=>{sfx("click");setRType(k);}} style={{
-                  padding:"8px 13px",borderRadius:10,border:"none",cursor:"pointer",
-                  fontSize:12,fontWeight:700,fontFamily:FONT,whiteSpace:"nowrap",
-                  background:rType===k?"#7B68EE":"rgba(255,255,255,.07)",
-                  color:rType===k?"#FFF":"rgba(255,255,255,.45)",transition:"all .18s",
-                }}>{l}</button>
+      {/* ── Recurring options ── */}
+      {mode === "recurring" && (
+        <div style={{ background:"rgba(123,104,238,.08)",border:"1px solid rgba(123,104,238,.18)",borderRadius:16,padding:16,marginBottom:24 }}>
+          <SL>Repetir</SL>
+          <div style={{ display:"flex",gap:7,flexWrap:"wrap",marginBottom:rType==="custom"?14:0 }}>
+            {[["daily","Cada día"],["weekdays","L – V"],["weekends","S – D"],["custom","Elegir"]].map(([k,l])=>(
+              <button key={k} type="button" onClick={()=>{sfx("click");setRType(k);}} style={{
+                padding:"8px 13px",borderRadius:10,border:"none",cursor:"pointer",
+                fontSize:12,fontWeight:700,fontFamily:FONT,whiteSpace:"nowrap",
+                background:rType===k?"#7B68EE":"rgba(255,255,255,.07)",
+                color:rType===k?"#FFF":"rgba(255,255,255,.45)",transition:"all .18s",
+              }}>{l}</button>
+            ))}
+          </div>
+          {rType === "custom" && (
+            <div style={{ display:"flex",gap:7,flexWrap:"wrap",marginTop:12 }}>
+              {["D","L","M","X","J","V","S"].map((d,i)=>(
+                <button key={i} type="button" onClick={()=>toggleDay(i)} style={{
+                  width:36,height:36,borderRadius:"50%",border:"none",cursor:"pointer",
+                  fontSize:12,fontWeight:800,fontFamily:FONT,
+                  background:rDays.includes(i)?"#7B68EE":"rgba(255,255,255,.08)",
+                  color:rDays.includes(i)?"#FFF":"rgba(255,255,255,.35)",transition:"all .18s",
+                }}>{d}</button>
               ))}
             </div>
-            {rType === "custom" && (
-              <div style={{ display:"flex",gap:7,flexWrap:"wrap" }}>
-                {DAYS_SH.map((d,i)=>(
-                  <button key={i} type="button" onClick={()=>toggleDay(i)} style={{
-                    width:36,height:36,borderRadius:"50%",border:"none",cursor:"pointer",
-                    fontSize:12,fontWeight:800,fontFamily:FONT,
-                    background:rDays.includes(i)?"#7B68EE":"rgba(255,255,255,.08)",
-                    color:rDays.includes(i)?"#FFF":"rgba(255,255,255,.35)",transition:"all .18s",
-                  }}>{d}</button>
-                ))}
-              </div>
-            )}
-            {/* Live preview */}
-            <div style={{ marginTop:12,fontSize:11,color:"rgba(163,149,255,.6)",fontWeight:700 }}>
-              Vista previa: {rType==="daily"?"Todos los días":rType==="weekdays"?"Lunes a viernes":rType==="weekends"?"Sábados y domingos":rDays.length?rDays.sort((a,b)=>a-b).map(i=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][i]).join(", "):"Ningún día seleccionado"}
-            </div>
+          )}
+          <div style={{ marginTop:12,fontSize:11,color:"rgba(163,149,255,.55)",fontWeight:700 }}>
+            {rType==="daily"?"Todos los días":rType==="weekdays"?"Lun – Vie":rType==="weekends"?"Sáb – Dom":rDays.length?rDays.sort((a,b)=>a-b).map(i=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][i]).join(", "):"Selecciona días"}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Start / End time */}
-        <div style={{ display:"flex",gap:10,marginBottom:18 }}>
+      {/* ── Start / End ── */}
+      <div style={{ marginBottom:24 }}>
+        <SL>Horario (opcional)</SL>
+        <div style={{ display:"flex",gap:10 }}>
           {[["Inicio",ts,setTs],["Fin",te,setTe]].map(([l,val,set])=>(
             <div key={l} style={{ flex:1 }}>
-              <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.26)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:7 }}>{l}</div>
+              <div style={{ fontSize:10,fontWeight:600,color:"rgba(255,255,255,.22)",marginBottom:7 }}>{l}</div>
               <select value={val} onChange={e=>set(e.target.value)} style={{ ...IS,padding:"10px 12px" }}>
                 <option value="">— sin hora —</option>
                 {ALL_TIMES.map(h=><option key={h} value={h}>{h}</option>)}
@@ -116,10 +200,12 @@ export default function AddForm({ onSave }) {
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Category */}
-        <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.26)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10 }}>Categoría</div>
-        <div style={{ display:"flex",gap:7,marginBottom:18,flexWrap:"wrap" }}>
+      {/* ── Category ── */}
+      <div style={{ marginBottom:24 }}>
+        <SL>Categoría</SL>
+        <div style={{ display:"flex",gap:7,flexWrap:"wrap" }}>
           {CATS.map(c=>(
             <button key={c.id} type="button" onClick={()=>{sfx("click");setCat(cat===c.id?"":c.id);}} style={{
               padding:"7px 12px",borderRadius:10,border:"none",cursor:"pointer",
@@ -129,19 +215,27 @@ export default function AddForm({ onSave }) {
             }}>● {c.label}</button>
           ))}
         </div>
+      </div>
 
-        {/* Notes */}
-        <input type="text" placeholder="Nota opcional" value={notes} onChange={e=>setNotes(e.target.value)}
-          style={{ ...IS,marginBottom:22 }}
+      {/* ── Notes ── */}
+      <div style={{ marginBottom:28 }}>
+        <SL>Nota (opcional)</SL>
+        <input type="text" placeholder="Agrega contexto..." value={notes} onChange={e=>setNotes(e.target.value)}
+          style={{ ...IS }}
         />
+      </div>
 
-        <button type="submit" style={{
-          width:"100%",padding:17,borderRadius:17,border:"none",
-          background:"#F8F9FF",color:"#080B14",fontSize:15,fontWeight:800,
-          cursor:"pointer",fontFamily:FONT,letterSpacing:"-.2px",
-          boxShadow:"0 8px 22px rgba(248,249,255,.07)",
-        }}>Guardar ✓</button>
-      </form>
+      {/* ── Submit ── */}
+      <button type="submit" form="task-form" style={{
+        width:"100%", padding:18, borderRadius:18, border:"none",
+        background:"#F8F9FF", color:"#080B14", fontSize:16, fontWeight:800,
+        cursor:"pointer", fontFamily:FONT, letterSpacing:"-.2px",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+        boxShadow:"0 8px 24px rgba(248,249,255,.07)",
+      }}>
+        <span style={{ fontSize:14 }}>{pr?.icon}</span>
+        Guardar tarea ✓
+      </button>
     </div>
   );
 }

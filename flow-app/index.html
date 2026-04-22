@@ -1,13 +1,81 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>flow-app</title>
+
+    <!-- ── Viewport & Theme ── -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#080B14" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- ── PWA ── -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- ── iOS PWA (Full-screen, Live Activity ready) ── -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Focus" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="apple-touch-startup-image" href="/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+
+    <!-- ── Android PWA ── -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- ── Open Graph ── -->
+    <meta property="og:title" content="Focus" />
+    <meta property="og:description" content="Planner personal con tareas, hábitos, Vision Boards y diario." />
+    <meta property="og:type" content="website" />
+
+    <!-- ── Preconnect fonts ── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <title>Focus.</title>
+
+    <style>
+      /* Prevent flash of white before React hydrates */
+      html, body, #root { background: #080B14; margin: 0; }
+      /* Safe area insets for notch / Dynamic Island / home bar */
+      body { padding-top: env(safe-area-inset-top); }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- ── Service Worker registration ── -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js", { scope:"/" })
+            .then(reg => {
+              console.log("Focus SW registered:", reg.scope);
+
+              // Request Periodic Background Sync for daily reminders
+              if ("periodicSync" in reg) {
+                Notification.requestPermission().then(perm => {
+                  if (perm === "granted") {
+                    reg.periodicSync.register("daily-reminder", { minInterval: 24 * 60 * 60 * 1000 })
+                       .catch(() => {}); // May fail if not supported
+                  }
+                });
+              }
+            })
+            .catch(err => console.warn("SW registration failed:", err));
+        });
+      }
+
+      // Handle /?tab= shortcuts from manifest
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialTab = urlParams.get("tab");
+      if (initialTab) {
+        // Store so App.jsx can read on mount
+        sessionStorage.setItem("initialTab", initialTab);
+        // Clean the URL without reload
+        history.replaceState({}, "", "/");
+      }
+    </script>
   </body>
 </html>

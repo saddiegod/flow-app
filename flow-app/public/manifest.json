@@ -1,0 +1,76 @@
+{
+  "name": "Focus — Tu día con intención",
+  "short_name": "Focus",
+  "description": "Planner personal con tareas, hábitos, Vision Boards y diario.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080B14",
+  "theme_color": "#080B14",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "scope": "/",
+  "id": "/focus-app",
+  "categories": ["productivity", "lifestyle"],
+  "icons": [
+    { "src": "/icon-192.png",  "sizes": "192x192",  "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png",  "sizes": "512x512",  "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-180.png",  "sizes": "180x180",  "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Añadir tarea",
+      "short_name": "Nueva",
+      "description": "Abre el formulario de nueva tarea directamente",
+      "url": "/?tab=add",
+      "icons": [{ "src": "/shortcut-add.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Ver hoy",
+      "short_name": "Hoy",
+      "description": "Ver tareas del día",
+      "url": "/?tab=today",
+      "icons": [{ "src": "/shortcut-today.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Diario",
+      "short_name": "Diario",
+      "description": "Abrir entrada del diario de hoy",
+      "url": "/?tab=journal",
+      "icons": [{ "src": "/shortcut-journal.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Metas",
+      "short_name": "Metas",
+      "description": "Ver Vision Boards y hábitos",
+      "url": "/?tab=goals",
+      "icons": [{ "src": "/shortcut-goals.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-today.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Vista de tareas del día"
+    },
+    {
+      "src": "/screenshot-journal.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Diario personal"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text":  "text",
+      "url":   "url"
+    }
+  },
+  "handle_links": "preferred",
+  "edge_side_panel": { "preferred_width": 400 }
+}
