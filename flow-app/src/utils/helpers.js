@@ -1,5 +1,4 @@
-import { supabase } from './supabase';
-
+import { supabase } from "./supabase.js";
 export async function subscribeToPush() {
   const registration = await navigator.serviceWorker.ready;
   
