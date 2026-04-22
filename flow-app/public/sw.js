@@ -37,27 +37,37 @@ self.addEventListener("fetch", e => {
 });
 
 // ── Push Notifications (LA ÚNICA FORMA FIABLE EN FONDO) ────────────────────────
+// public/sw.js - Versión 6.1 (Blindada para iOS)
+
 self.addEventListener("push", e => {
-  if (!e.data) return;
-  
-  let data;
-  try {
-    data = e.data.json();
-  } catch (err) {
-    data = { title: "Focus", body: e.data.text() };
-  }
+  console.log("[SW] Push recibido en segundo plano");
 
-  const options = {
-    body:      data.body || "",
-    icon:      "/icon-192.png",
-    badge:     "/badge.png",
-    tag:       data.tag  || "focus-alert",
-    renotify:  true,
-    vibrate:   [100, 50, 100],
-    data:      { url: data.url || "/" },
-  };
+  // Envolvemos todo en una sola promesa para que iOS no corte la energía
+  e.waitUntil(
+    (async () => {
+      if (!e.data) return;
 
-  e.waitUntil(self.registration.showNotification(data.title || "Focus", options));
+      let data;
+      try {
+        data = e.data.json();
+      } catch (err) {
+        data = { title: "Focus", body: e.data.text() };
+      }
+
+      const options = {
+        body:      data.body || "Tienes una tarea pendiente",
+        icon:      "/icon-192.png",
+        badge:     "/badge.png",
+        tag:       data.tag  || "focus-notif", // Tag fijo para evitar duplicados
+        renotify:  true,
+        vibrate:   [100, 50, 100],
+        data:      { url: data.url || "/" },
+      };
+
+      // Esta es la línea que despierta la pantalla de bloqueo
+      return self.registration.showNotification(data.title || "Focus", options);
+    })()
+  );
 });
 
 // ── Message Handler ──────────────────────────────────────────────────────────
