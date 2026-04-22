@@ -5,9 +5,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 serve(async (req) => {
   // Llaves VAPID (Asegúrate de que sean las tuyas)
   const VAPID_PUBLIC_KEY = "BCxNAVbAFYfYxOue7-1Rae3EgU2oHFpsfkxKWSDibvjWvrPIa1WlKWqcWBSLTb4dwtQOoD3_xU_b6jI68Ct1gwQ";
-  const VAPID_PRIVATE_KEY = Deno.env.get('qS7hui9jks3yQBDyGmrkmkh0OzWy9QmiUlVc1_nWwB4') ?? '';
+  const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 
-  WebPush.setVapidDetails('mailto:tu@correo.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  WebPush.setVapidDetails('dominguezdiego2004@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   
