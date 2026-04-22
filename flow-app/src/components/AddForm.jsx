@@ -203,15 +203,23 @@ export default function AddForm({ onSave, selectedDate }) {
 
       {/* ── Start / End ── */}
       <div style={{ marginBottom:24 }}>
-        <SL>Horario (opcional)</SL>
+        <SL>Horario personalizado</SL>
         <div style={{ display:"flex",gap:10 }}>
           {[["Inicio",ts,setTs],["Fin",te,setTe]].map(([l,val,set])=>(
             <div key={l} style={{ flex:1 }}>
               <div style={{ fontSize:10,fontWeight:600,color:"rgba(255,255,255,.22)",marginBottom:7 }}>{l}</div>
-              <select value={val} onChange={e=>set(e.target.value)} style={{ ...IS,padding:"10px 12px" }}>
-                <option value="">— sin hora —</option>
-                {ALL_TIMES.map(h=><option key={h} value={h}>{h}</option>)}
-              </select>
+              <input 
+                type="time" 
+                value={val} 
+                onChange={e=>set(e.target.value)} 
+                style={{ 
+                  ...IS, 
+                  padding:"12px",
+                  colorScheme: "dark", // 👈 Esto hace que el reloj sea oscuro y elegante
+                  fontSize: "15px",
+                  fontWeight: "600"
+                }} 
+              />
             </div>
           ))}
         </div>
