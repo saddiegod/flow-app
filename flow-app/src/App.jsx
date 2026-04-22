@@ -212,12 +212,15 @@ export default function App() {
 
       // 3. Subimos a Supabase en segundo plano
       if (newTask.time_start && newTask.time_end) {
-        // Solo la subimos si tiene hora de inicio y fin (el cartero la necesita)
+        // ⚡ FIX: Convertimos tu hora local a formato global (UTC) para Supabase
+        const startUtc = new Date(`${newTask.date}T${newTask.time_start}:00`).toISOString();
+        const endUtc = new Date(`${newTask.date}T${newTask.time_end}:00`).toISOString();
+
         const { error } = await supabase.from('tasks').insert([{
           id: newTask.id,
           title: newTask.title,
-          start_time: `${newTask.date}T${newTask.time_start}:00`, // Formato de fecha para SQL
-          end_time: `${newTask.date}T${newTask.time_end}:00`,
+          start_time: startUtc, // 👈 Hora convertida
+          end_time: endUtc,     // 👈 Hora convertida
           notified_start: newTask.notified_start,
           notified_half: newTask.notified_half,
           notified_end: newTask.notified_end,
@@ -226,7 +229,6 @@ export default function App() {
         
         if (error) console.error("Error sincronizando con la nube:", error);
       }
-    }
     setTab("today");
   }, [date]);
 

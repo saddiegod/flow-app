@@ -90,7 +90,7 @@ export function BoardDetail({ board, onChange, onClose, onDelete }) {
               width:52,height:52,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
             }}>{board.emoji}</button>
             <div>
-              <input value={board.title} onChange={e=>push({title:e.target.value||board.title})}
+             <input value={board.title} onChange={e=>push({title:e.target.value||board.title})}
                 style={{ ...IS,padding:"5px 0",background:"transparent",border:"none",fontSize:19,fontWeight:900,fontFamily:SERIF,letterSpacing:"-.3px",width:"auto",minWidth:100 }}
               />
             </div>

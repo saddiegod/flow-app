@@ -101,7 +101,6 @@ export default function AddForm({ onSave, selectedDate }) {
             <input
               type="text"
               placeholder='¿Qué harás? · prueba "a las 9 leer"'
-              autoFocus
               value={title}
               onChange={handleTitleChange}
               style={{
