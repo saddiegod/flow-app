@@ -1,0 +1,52 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import webpush from "npm:web-push@3.6.7";
+ 
+const VAPID_PUBLIC  = Deno.env.get("VAPID_PUBLIC_KEY")!;
+const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE_KEY")!;
+const VAPID_EMAIL   = Deno.env.get("VAPID_EMAIL") || "mailto:tu@email.com";
+ 
+webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC, VAPID_PRIVATE);
+ 
+serve(async (req) => {
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
+  }
+ 
+  try {
+    const { id, title, body, scheduledAt, tag, actions, subscription } = await req.json();
+ 
+    if (!subscription || !title) {
+      return new Response(JSON.stringify({ error: "Missing subscription or title" }), {
+        status: 400, headers: { "Content-Type": "application/json" },
+      });
+    }
+ 
+    // Calcular delay hasta scheduledAt
+    const targetMs  = new Date(scheduledAt).getTime();
+    const nowMs     = Date.now();
+    const delayMs   = Math.max(0, targetMs - nowMs);
+ 
+    const payload = JSON.stringify({ id, title, body, tag, actions: actions || [], url: "/" });
+ 
+    if (delayMs < 5000) {
+      // Mandar ahora (delay < 5s)
+      await webpush.sendNotification(subscription, payload);
+    } else {
+      // Esperar hasta la hora programada (Edge Functions tienen timeout de 150s)
+      // Para delays largos, lo correcto es usar pg_cron + una tabla de cola.
+      // Aquí usamos un delay simple para demos y notificaciones cortas (<2min)
+      await new Promise(r => setTimeout(r, Math.min(delayMs, 120_000)));
+      await webpush.sendNotification(subscription, payload);
+    }
+ 
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+ 
+  } catch (err) {
+    console.error("schedule-notification error:", err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500, headers: { "Content-Type": "application/json" },
+    });
+  }
+});

@@ -13,6 +13,7 @@ import FocusMode      from "./components/FocusMode.jsx";
 import Heatmap        from "./components/Heatmap.jsx";
 import Settings       from "./components/Settings.jsx";
 import Journal        from "./components/Journal.jsx";
+import { scheduleAllNotifications } from "./utils/notifications.js";
 import { BoardCard, BoardDetail } from "./components/Vision.jsx";
 
 const KEY = { tasks:"tasks", rec:"recurring", habits:"habits", boards:"boards" };
@@ -127,23 +128,64 @@ export default function App() {
   }, [tasks, recurring, cal]);
 
   // ── Notification scheduling ────────────────────────────────────────────────
-  const notifTimers = useRef([]);
+ const notifTimers = useRef([]);
+ 
   useEffect(() => {
-    if (notifPerm !== "granted" || date !== todayISO()) return;
+    if (notifPerm !== "granted") return;
+ 
+    // Cancelar timers anteriores antes de reprogramar
     notifTimers.current.forEach(clearTimeout);
     notifTimers.current = [];
-    allTasksForDate.filter(t => t.time_start && t.status !== "done").forEach(t => {
-      const [h, mi] = t.time_start.split(":").map(Number);
-      const alertAt = new Date(); alertAt.setHours(h, mi-10, 0, 0);
-      const delay = alertAt.getTime() - Date.now();
-      if (delay > 0) {
-        notifTimers.current.push(setTimeout(() =>
-          fireNotif(`⏰ En 10 min: ${t.title}`, `Empieza a las ${t.time_start}`, "pf_"+t.id), delay
-        ));
-      }
+ 
+    // ¿Tenemos push real disponible? (sesión + suscripción guardada)
+    const hasPush = !!session && !!localStorage.getItem("push_subscription");
+ 
+    scheduleAllNotifications({
+      tasks,
+      habits,
+      todayTasks: allTasksForDate,
+      usePush: hasPush,
+    }).then(timers => {
+      if (timers?.length) notifTimers.current.push(...timers);
     });
+ 
+    // Mandar badge con tareas pendientes de hoy
+    const pendingCount = allTasksForDate.filter(t => t.status !== "done").length;
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.active?.postMessage({
+        type:  pendingCount > 0 ? "SET_BADGE" : "CLEAR_BADGE",
+        count: pendingCount,
+      });
+    });
+ 
+    // Mandar tarea actual al SW para el widget de Atajos
+    const now    = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const currentTask = allTasksForDate.find(t => {
+      if (!t.time_start || t.status === "done") return false;
+      const [h, m] = t.time_start.split(":").map(Number);
+      const startMin = h * 60 + m;
+      const endMin   = t.time_end
+        ? (() => { const [eh, em] = t.time_end.split(":").map(Number); return eh * 60 + em; })()
+        : startMin + 60;
+      return nowMin >= startMin && nowMin <= endMin;
+    });
+ 
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.active?.postMessage({
+        type: "UPDATE_WIDGET",
+        data: {
+          task:         currentTask || null,
+          pendingCount,
+          totalToday:   allTasksForDate.length,
+          doneToday:    allTasksForDate.filter(t => t.status === "done").length,
+          updatedAt:    new Date().toISOString(),
+        },
+      });
+    });
+ 
     return () => notifTimers.current.forEach(clearTimeout);
-  }, [allTasksForDate, notifPerm, date]);
+  }, [allTasksForDate, notifPerm, session, tasks, habits]);
 
   // ── Task actions ──────────────────────────────────────────────────────────
   const toggleTask = useCallback((id, type, taskDate) => {
