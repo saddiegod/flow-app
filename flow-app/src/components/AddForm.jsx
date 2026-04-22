@@ -77,6 +77,7 @@ export default function AddForm({ onSave, selectedDate }) {
       rType,
       rDays:     rDays.map(Number),
       // 👇 AÑADIDO PARA EL CARTERO INTELIGENTE 👇
+      notified_start: false,
       notified_half: false,
       notified_end: false,
       subscription: sub 

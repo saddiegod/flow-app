@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { todayISO, toISO, calDays, recurApplies, uid, migrateTasks, recurLabel } from "./utils/dates.js";
 import { sfx, load, save, fireNotif, requestNotifPerm } from "./utils/helpers.js";
 import { FONT, SERIF, BOARD_COLORS, BOARD_EMOJIS } from "./utils/constants.js";
+// 👇 IMPORTAMOS SUPABASE 👇
+import { supabase } from "./utils/supabase.js"; 
 import { injectGlobal, StatsBar } from "./components/shared.jsx";
 import TaskCard       from "./components/TaskCard.jsx";
 import Timeline       from "./components/Timeline.jsx";
@@ -178,8 +180,9 @@ export default function App() {
     fireNotif("⏰ Tarea pospuesta", "Movida a mañana.", "snooze");
   }, []);
 
-  // ── Save new task ─────────────────────────────────────────────────────────
-  const saveTask = useCallback(({ title, timeStart, timeEnd, category, notes, priority, mode, rType, rDays }) => {
+  // ── Save new task (CON SINCRONIZACIÓN A SUPABASE) ─────────────────────────
+  // 👇 Convertimos la función a async para poder usar Supabase 👇
+  const saveTask = useCallback(async ({ title, timeStart, timeEnd, category, notes, priority, mode, rType, rDays, notified_start, notified_half, notified_end, subscription }) => {
     sfx("click");
     if (mode === "recurring") {
       setRecurring(p => [...p, {
@@ -190,13 +193,39 @@ export default function App() {
         recurrence:{ type:rType, days:rDays.map(Number) },
         completions:{},
       }]);
+      // Nota: Las rutinas (recurring) por ahora solo viven en tu dispositivo.
     } else {
-      setTasks(p => [...p, {
+      // 1. Armamos la tarea con los nuevos campos del cartero
+      const newTask = {
         id:uid(), title, date, status:"pending",
         time_start:timeStart||null, time_end:timeEnd||null,
         category:category||null, notes:notes||"",
         priority:priority||3,
-      }]);
+        notified_start: notified_start || false,
+        notified_half: notified_half || false,
+        notified_end: notified_end || false,
+        subscription: subscription || null
+      };
+
+      // 2. Guardamos localmente (para que la app sea rápida)
+      setTasks(p => [...p, newTask]);
+
+      // 3. Subimos a Supabase en segundo plano
+      if (newTask.time_start && newTask.time_end) {
+        // Solo la subimos si tiene hora de inicio y fin (el cartero la necesita)
+        const { error } = await supabase.from('tasks').insert([{
+          id: newTask.id,
+          title: newTask.title,
+          start_time: `${newTask.date}T${newTask.time_start}:00`, // Formato de fecha para SQL
+          end_time: `${newTask.date}T${newTask.time_end}:00`,
+          notified_start: newTask.notified_start,
+          notified_half: newTask.notified_half,
+          notified_end: newTask.notified_end,
+          subscription: newTask.subscription
+        }]);
+        
+        if (error) console.error("Error sincronizando con la nube:", error);
+      }
     }
     setTab("today");
   }, [date]);
