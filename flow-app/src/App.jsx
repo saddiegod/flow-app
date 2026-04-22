@@ -219,9 +219,9 @@ export default function App() {
           title: newTask.title,
           start_time: startUtc,
           end_time: endUtc,
-          notified_start: newTask.notified_start,
-          notified_half: newTask.notified_half,
-          notified_end: newTask.notified_end,
+          notified_start: false, // 👈 Importante empezar en false
+          notified_half: false,
+          notified_end: false,
           subscription: newTask.subscription
         }]);
         

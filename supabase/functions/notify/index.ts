@@ -3,135 +3,73 @@ import WebPush from "https://esm.sh/web-push@3.4.5"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 serve(async (req) => {
-  // 1. Configuración de tus llaves VAPID
-  const VAPID_PUBLIC_KEY = "sb_publishable_7jTGeLC-FP-D7n8e_mD1SQ_UPfXPqDY"; // Reemplaza con tu llave pública
+  // Llaves VAPID (Asegúrate de que sean las tuyas)
+  const VAPID_PUBLIC_KEY = "TU_PUBLIC_KEY";
   const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
 
-  WebPush.setVapidDetails(
-    'dominguezdiego2004@gmail.com', // Reemplaza con tu correo
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-  );
+  WebPush.setVapidDetails('mailto:tu@correo.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-  // 2. Conexión a Supabase
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  
   const now = new Date();
-  
-  // 3. Ajustamos el reloj a tu zona horaria para que las notificaciones de rutina sean exactas
-  const timeStr = now.toLocaleTimeString('es-MX', { 
-    timeZone: 'America/Mexico_City', 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
+  // Hora en CDMX para las notificaciones globales
+  const timeMX = now.toLocaleTimeString('es-MX', { timeZone: 'America/Mexico_City', hour12: false, hour: '2-digit', minute: '2-digit' });
 
-  let notificationsSent = 0;
+  console.log(`[LOG] Ejecutando cartero a las: ${now.toISOString()} (MX: ${timeMX})`);
 
-  // Función auxiliar para enviar push
-  const sendPush = async (subscription, title, body) => {
-    try {
-      await WebPush.sendNotification(subscription, JSON.stringify({ title, body }));
-      return true;
-    } catch (err) {
-      console.error("Error enviando push:", err);
-      return false;
-    }
-  };
-
-  // ─── A. RUTINA DIARIA (Globales) ──────────────────────────────────────────
-  
-  // Obtenemos todas las suscripciones guardadas para mandar los mensajes generales
-  const { data: globalSubs } = await supabase.from('push_subscriptions').select('subscription');
-  
-  const sendGlobalPush = async (title, body) => {
-    if (globalSubs) {
-      for (const subRow of globalSubs) {
-        if (subRow.subscription) {
-          await sendPush(subRow.subscription, title, body);
-          notificationsSent++;
-        }
+  // --- 1. NOTIFICACIONES DE RUTINA ---
+  const sendGlobal = async (title, body) => {
+    const { data: subs } = await supabase.from('push_subscriptions').select('subscription');
+    if (subs) {
+      for (const s of subs) {
+        await WebPush.sendNotification(s.subscription, JSON.stringify({ title, body })).catch(e => console.error("Error global:", e));
       }
     }
   };
 
-  if (timeStr === "08:00") {
-    await sendGlobalPush("🌅 ¡Buen día, Diego!", "Un nuevo día para fluir. ¿Qué vamos a lograr hoy?");
-  } else if (timeStr === "14:00") {
-    await sendGlobalPush("✨ Mitad de jornada", "Recuerda hidratarte y respirar. Vas muy bien.");
-  } else if (timeStr === "22:30") {
-    await sendGlobalPush("🌙 Tiempo de descansar", "Es hora de desconectar. El descanso es parte del proceso.");
-  }
+  if (timeMX === "08:00") await sendGlobal("🌅 Buenos días", "Es momento de arrancar con enfoque.");
+  if (timeMX === "14:00") await sendGlobal("✨ Mitad del día", "Haz una pausa y respira. Vas muy bien.");
+  if (timeMX === "22:30") await sendGlobal("🌙 Hora de dormir", "Buen trabajo hoy. Descansa para recuperar energía.");
 
-  // ─── B. NOTIFICACIONES DE TAREAS (Inteligentes) ──────────────────────────
-  
-  const { data: activeTasks, error } = await supabase
-    .from('tasks')
-    .select('*')
+  // --- 2. NOTIFICACIONES DE TAREAS ---
+  // Buscamos tareas que DEBERÍAN estar activas en este rango de tiempo
+  const { data: tasks, error } = await supabase.from('tasks').select('*')
     .lte('start_time', now.toISOString())
     .gte('end_time', now.toISOString());
 
-  if (error) {
-    console.error("Error al buscar tareas:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  }
+  if (error) return new Response(JSON.stringify({ error }));
 
-  // Banco de frases motivacionales para no aburrirte
-  const halfPhrases = [
-    "Mantén el enfoque, lo estás haciendo genial. 🔥",
-    "El momento es ahora. Sigue así. 🧠",
-    "Ya pasaste lo más difícil. ¡Termina fuerte! ⚡",
-    "Un pequeño esfuerzo más. Tú puedes. 🎯"
-  ];
+  console.log(`[LOG] Tareas encontradas para procesar: ${tasks?.length || 0}`);
 
-  if (activeTasks && activeTasks.length > 0) {
-    for (const task of activeTasks) {
-      if (!task.subscription) continue;
+  if (tasks) {
+    for (const task of tasks) {
+      if (!task.subscription) {
+        console.log(`[ALERTA] La tarea ${task.id} no tiene suscripción.`);
+        continue;
+      }
 
       const start = new Date(task.start_time);
       const end = new Date(task.end_time);
-      const totalDuration = end.getTime() - start.getTime();
-      const halfTime = new Date(start.getTime() + totalDuration / 2);
-      const fiveMinBefore = new Date(end.getTime() - 5 * 60000);
+      const half = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
+      const tMinus5 = new Date(end.getTime() - 5 * 60000);
 
-      // 1. INICIO DE LA TAREA
-      if (now >= start && !task.notified_start) {
-        const success = await sendPush(task.subscription, "🚀 ¡A darle!", `Inicia ahora: ${task.title}`);
-        if (success) {
-          await supabase.from('tasks').update({ notified_start: true }).eq('id', task.id);
-          notificationsSent++;
-        }
+      // INICIO
+      if (!task.notified_start) {
+        await WebPush.sendNotification(task.subscription, JSON.stringify({ title: "🚀 ¡Inicia ahora!", body: task.title })).catch(() => {});
+        await supabase.from('tasks').update({ notified_start: true }).eq('id', task.id);
       }
-
-      // 2. MITAD DE LA TAREA (Con frases aleatorias)
-      if (now >= halfTime && !task.notified_half) {
-        const randomPhrase = halfPhrases[Math.floor(Math.random() * halfPhrases.length)];
-        const success = await sendPush(task.subscription, "Mitad del camino", randomPhrase);
-        if (success) {
-          await supabase.from('tasks').update({ notified_half: true }).eq('id', task.id);
-          notificationsSent++;
-        }
+      // MITAD
+      if (now >= half && !task.notified_half) {
+        await WebPush.sendNotification(task.subscription, JSON.stringify({ title: "🔥 Vas a la mitad", body: `Sigue con: ${task.title}` })).catch(() => {});
+        await supabase.from('tasks').update({ notified_half: true }).eq('id', task.id);
       }
-
-      // 3. FINAL DE LA TAREA (5 min antes)
-      if (now >= fiveMinBefore && !task.notified_end) {
-        const success = await sendPush(task.subscription, "🏁 Recta final", `Faltan 5 min para cerrar: ${task.title}`);
-        if (success) {
-          await supabase.from('tasks').update({ notified_end: true }).eq('id', task.id);
-          notificationsSent++;
-        }
+      // FIN (T-5)
+      if (now >= tMinus5 && !task.notified_end) {
+        await WebPush.sendNotification(task.subscription, JSON.stringify({ title: "🏁 Casi terminas", body: `5 min para cerrar: ${task.title}` })).catch(() => {});
+        await supabase.from('tasks').update({ notified_end: true }).eq('id', task.id);
       }
     }
   }
 
-  // 5. Respuesta del servidor
-  return new Response(JSON.stringify({ 
-    done: true, 
-    tasksChecked: activeTasks?.length || 0,
-    notificationsSent 
-  }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(JSON.stringify({ status: "ok", processed: tasks?.length }));
 });
