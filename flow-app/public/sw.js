@@ -39,21 +39,33 @@ self.addEventListener("fetch", e => {
   );
 });
 
-// ── Push notifications (from Supabase Edge Function) ──────────────────────────
+// ── Push notifications (Viene de Supabase) ──────────────────────────
 self.addEventListener("push", e => {
+  console.log("[SW] Push recibido");
+  
+  // Si no hay datos, no hacemos nada
   if (!e.data) return;
-  const data = e.data.json();
+
+  let data;
+  try {
+    data = e.data.json();
+  } catch (err) {
+    // Si el servidor manda texto plano en lugar de JSON, lo manejamos
+    data = { title: "Focus", body: e.data.text() };
+  }
+
+  const options = {
+    body:      data.body || "",
+    icon:      "/icon-192.png",
+    badge:     "/badge.png",
+    tag:       data.tag  || "focus-alert", // Tag para agrupar
+    renotify:  true,
+    vibrate:   [100, 50, 100],
+    data:      { url: data.url || "/" },
+  };
+
   e.waitUntil(
-    self.registration.showNotification(data.title || "Focus", {
-      body:    data.body || "",
-      icon:    "/icon-192.png",
-      badge:   "/badge.png",
-      tag:     data.tag  || "focus",
-      renotify: true,
-      vibrate: [100, 50, 100],
-      data:    { url: data.url || "/" },
-      actions: data.actions || [],
-    })
+    self.registration.showNotification(data.title || "Focus", options)
   );
 });
 

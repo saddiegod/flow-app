@@ -127,12 +127,15 @@ async function getSW() {
   if (_sw) return _sw;
   if (!("serviceWorker" in navigator)) return null;
   try {
-    const blob = new Blob([SW_CODE], { type:"application/javascript" });
-    const url  = URL.createObjectURL(blob);
-    _sw = await navigator.serviceWorker.register(url, { scope:"/" });
+    // IMPORTANTE: Asegúrate de que la ruta sea '/sw.js' 
+    // y que el archivo esté en tu carpeta /public
+    _sw = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
     return _sw;
-  } catch { return null; }
+  } catch (err) {
+    console.error("SW Registration failed:", err);
+    return null;
+  }
 }
 
 export async function requestNotifPerm() {
