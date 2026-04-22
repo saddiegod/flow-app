@@ -181,7 +181,6 @@ export default function App() {
   }, []);
 
   // ── Save new task (CON SINCRONIZACIÓN A SUPABASE) ─────────────────────────
-  // 👇 Convertimos la función a async para poder usar Supabase 👇
   const saveTask = useCallback(async ({ title, timeStart, timeEnd, category, notes, priority, mode, rType, rDays, notified_start, notified_half, notified_end, subscription }) => {
     sfx("click");
     if (mode === "recurring") {
@@ -193,9 +192,8 @@ export default function App() {
         recurrence:{ type:rType, days:rDays.map(Number) },
         completions:{},
       }]);
-      // Nota: Las rutinas (recurring) por ahora solo viven en tu dispositivo.
     } else {
-      // 1. Armamos la tarea con los nuevos campos del cartero
+      // 1. Armamos la tarea
       const newTask = {
         id:uid(), title, date, status:"pending",
         time_start:timeStart||null, time_end:timeEnd||null,
@@ -207,7 +205,7 @@ export default function App() {
         subscription: subscription || null
       };
 
-      // 2. Guardamos localmente (para que la app sea rápida)
+      // 2. Guardamos localmente
       setTasks(p => [...p, newTask]);
 
       // 3. Subimos a Supabase en segundo plano
@@ -219,8 +217,8 @@ export default function App() {
         const { error } = await supabase.from('tasks').insert([{
           id: newTask.id,
           title: newTask.title,
-          start_time: startUtc, // 👈 Hora convertida
-          end_time: endUtc,     // 👈 Hora convertida
+          start_time: startUtc,
+          end_time: endUtc,
           notified_start: newTask.notified_start,
           notified_half: newTask.notified_half,
           notified_end: newTask.notified_end,
@@ -229,6 +227,7 @@ export default function App() {
         
         if (error) console.error("Error sincronizando con la nube:", error);
       }
+    } // 👈 ¡Esta era la llave fugitiva!
     setTab("today");
   }, [date]);
 
