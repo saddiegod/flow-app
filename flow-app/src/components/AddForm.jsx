@@ -56,6 +56,16 @@ export default function AddForm({ onSave, selectedDate }) {
     e.preventDefault();
     if (!title.trim()) return;
     const parsed = parseNL(title);
+    
+    // 🔔 OBTENEMOS LA SUSCRIPCIÓN DEL DISPOSITIVO
+    let sub = null;
+    try {
+      const storedSub = localStorage.getItem('push_subscription');
+      if (storedSub) sub = JSON.parse(storedSub);
+    } catch (err) {
+      console.warn("No se pudo leer la suscripción push:", err);
+    }
+
     onSave({
       title:     parsed.title.trim() || title.trim(),
       timeStart: ts || parsed.time_start || null,
@@ -66,7 +76,12 @@ export default function AddForm({ onSave, selectedDate }) {
       mode,
       rType,
       rDays:     rDays.map(Number),
+      // 👇 AÑADIDO PARA EL CARTERO INTELIGENTE 👇
+      notified_half: false,
+      notified_end: false,
+      subscription: sub 
     });
+    
     setTitle(""); setTs(""); setTe(""); setCat(""); setNotes(""); setPriority(3);
   }, [title, ts, te, cat, notes, priority, mode, rType, rDays, onSave]);
 

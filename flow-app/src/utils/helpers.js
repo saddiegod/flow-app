@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+
 export async function subscribeToPush() {
   const registration = await navigator.serviceWorker.ready;
   
@@ -13,9 +14,13 @@ export async function subscribeToPush() {
     .from('push_subscriptions')
     .insert([{ subscription: subscription.toJSON() }]);
 
+  // 👇 CLAVE: Guardar localmente para que AddForm lo encuentre
+  localStorage.setItem('push_subscription', JSON.stringify(subscription.toJSON()));
+
   if (error) console.error('Error guardando suscripción:', error);
   else console.log('✅ iPhone suscrito a notificaciones reales');
 }
+
 // ─── Audio ────────────────────────────────────────────────────────────────────
 let _ac = null;
 export function sfx(type) {
